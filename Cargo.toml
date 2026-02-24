@@ -1,0 +1,20 @@
+[package]
+name = "chess-engine"
+version = "0.2.1"
+edition = "2024"
+rust-version = "1.90"
+
+[dependencies]
+
+[dev-dependencies]
+ntest = "0.9"
+
+[[bin]]
+name = "chess-engine"
+path = "main.rs"
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+pedantic = { level = "warn", priority = -1 }
