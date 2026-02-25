@@ -1,11 +1,4 @@
-pub enum Piece {
-    Pawn,
-    Knight,
-    Bishop,
-    Rook,
-    Queen,
-    King
-}
+use crate::{Piece, piece::PieceType};
 
 pub struct Move {
     pub piece: Piece,
@@ -15,26 +8,26 @@ pub struct Move {
 pub fn print_move(m: Move) -> String
 {
     let mut s = String::new();
-    match m.piece {
-        Piece::Pawn => {
+    match m.piece.piece_type {
+        PieceType::Pawn => {
         },
-        Piece::Knight => {
+        PieceType::Knight => {
             s.push('N');
 
         },
-        Piece::Bishop => {
+        PieceType::Bishop => {
             s.push('B');
 
         },
-        Piece::Rook => {
+        PieceType::Rook => {
             s.push('R');
 
         },
-        Piece::Queen => {
+        PieceType::Queen => {
             s.push('Q');
 
         },
-        Piece::King => {
+        PieceType::King => {
             s.push('K');
 
         }

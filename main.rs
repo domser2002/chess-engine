@@ -1,14 +1,16 @@
-use crate::domain::Move;
-use crate::domain::Piece;
-use crate::domain::print_move;
+use crate::r#move::Move;
+use crate::piece::{Piece, WHITE_KNIGHT};
+use crate::r#move::print_move;
 
-mod domain;
+mod r#move;
+mod position;
+mod piece;
 #[cfg(test)]
 mod public_test;
 
 fn main()
 {
-    let e4 = Move {piece: Piece::Knight, square: 1};
+    let e4 = Move {piece: WHITE_KNIGHT, square: 1};
     let s = print_move(e4);
     println!("{s}");
 }
