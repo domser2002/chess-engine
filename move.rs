@@ -1,5 +1,6 @@
-use crate::{Piece, piece::{PieceType, get_char}};
-use crate::{square::get_square_name};
+use crate::Piece;
+use crate::piece::get_char;
+use crate::square::get_square_name;
 
 pub struct Move {
     pub piece: Piece,

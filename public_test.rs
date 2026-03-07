@@ -111,10 +111,8 @@ pub mod piece_test {
 }
 
 pub mod move_tests {
-    use crate::r#move::Move;
-    use crate::r#move::print_move;
-    use crate::piece::{BLACK_BISHOP, BLACK_PAWN, WHITE_KING, WHITE_KNIGHT, WHITE_QUEEN, WHITE_ROOK};
-    // use ntest::timeout;
+    use crate::r#move::*;
+    use crate::piece::*;
 
     #[test]
     fn rook_move_simple_square() {

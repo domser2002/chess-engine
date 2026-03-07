@@ -1,4 +1,4 @@
-use crate::{Piece, piece::{BLACK_BISHOP, BLACK_KING, BLACK_KNIGHT, BLACK_PAWN, BLACK_QUEEN, BLACK_ROOK, WHITE_BISHOP, WHITE_KING, WHITE_KNIGHT, WHITE_PAWN, WHITE_QUEEN, WHITE_ROOK}};
+use crate::{Piece, piece::*};
 // use crate::Move;
 pub struct Position {
     pub pieces: [Option<Piece>; 64],
