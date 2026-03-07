@@ -116,42 +116,42 @@ pub mod move_tests {
 
     #[test]
     fn rook_move_simple_square() {
-        let m = Move {piece: WHITE_ROOK, square: 1};
+        let m = Move {piece: WHITE_ROOK, from: 2, to: 1};
         let s = print_move(m);
         assert_eq!(s, "Ra1");
     }
     
     #[test]
     fn knight_move() {
-        let m = Move {piece: WHITE_KNIGHT, square: 43};
+        let m = Move {piece: WHITE_KNIGHT, from: 2, to: 43};
         let s = print_move(m);
         assert_eq!(s, "Nf3");
     }
 
     #[test]
     fn bishop_move() {
-        let m = Move {piece: BLACK_BISHOP, square: 20};
+        let m = Move {piece: BLACK_BISHOP, from: 2, to: 20};
         let s = print_move(m);
         assert_eq!(s, "Bc4");
     }
 
     #[test]
     fn queen_move() {
-        let m = Move {piece: WHITE_QUEEN, square: 61};
+        let m = Move {piece: WHITE_QUEEN, from: 2, to: 61};
         let s = print_move(m);
         assert_eq!(s, "Qh5");
     }
 
     #[test]
     fn king_move() {
-        let m = Move {piece: WHITE_KING, square: 41};
+        let m = Move {piece: WHITE_KING, from: 2, to: 41};
         let s = print_move(m);
         assert_eq!(s, "Kf1");
     }
 
     #[test]
     fn pawn_move() {
-        let m = Move {piece: BLACK_PAWN, square: 36};
+        let m = Move {piece: BLACK_PAWN, from: 2, to: 36};
         let s = print_move(m);
         assert_eq!(s, "e4");
     }

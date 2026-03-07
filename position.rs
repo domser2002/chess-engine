@@ -1,4 +1,4 @@
-use crate::{Piece, piece::*, square::*};
+use crate::{Piece, r#move::Move, piece::*, square::*};
 use colored::*;
 // use crate::Move;
 #[derive(Copy, Clone)]
@@ -60,4 +60,32 @@ pub fn print_position(position: Position) {
         println!("{vertical_line}");
     }
     println!("{horizontal_line}");
+}
+
+
+// TODO:
+// 1. Allow captures.
+// 2. Check if move is legal.
+// 3. Allow special moves- castling, promotion, en passant.
+pub fn make_move(position: &mut Position, m: Move) {
+    let (from_col_idx, from_row_idx) = get_col_and_row(m.from);
+    let (to_col_idx, to_row_idx) = get_col_and_row(m.to);
+    let maybe_piece_on_src: Option<Piece> = position.pieces[from_row_idx as usize][from_col_idx as usize];
+    match maybe_piece_on_src {
+        Some(src_piece) => {
+            let maybe_piece_on_dest: Option<Piece> = position.pieces[to_row_idx as usize][to_col_idx as usize];
+            match maybe_piece_on_dest {
+                Some(_dst_piece) => {
+                    panic!("Square is already occupied!");
+                }
+                None => {
+                    position.pieces[from_row_idx as usize][from_col_idx as usize] = None;
+                    position.pieces[to_row_idx as usize][to_col_idx as usize] = Some(src_piece);
+                } 
+            }
+        }
+        None => {
+            panic!("No piece on source square!");
+        }
+    }
 }
