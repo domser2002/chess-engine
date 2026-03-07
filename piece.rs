@@ -1,3 +1,5 @@
+use std::char;
+
 #[derive(Copy, Clone)]
 pub enum PieceType {
     Pawn,
@@ -77,3 +79,14 @@ pub static BLACK_KING: Piece = Piece {
     piece_color: Color::Black,
     piece_type: PieceType::King
 };
+
+pub fn get_char(p: Piece) -> Option<char> {
+    match p.piece_type {
+        PieceType::Pawn => return None,
+        PieceType::Knight => return Some('N'),
+        PieceType::Bishop => return Some('B'),
+        PieceType::Rook => return Some('R'),
+        PieceType::Queen => return Some('Q'),
+        PieceType::King => return Some('K')
+    }
+}

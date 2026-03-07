@@ -1,10 +1,12 @@
 use crate::r#move::Move;
 use crate::piece::{Piece, WHITE_KNIGHT};
 use crate::r#move::print_move;
+// use crate::square;
 
 mod r#move;
 mod position;
 mod piece;
+mod square;
 #[cfg(test)]
 mod public_test;
 
