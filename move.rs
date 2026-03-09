@@ -2,6 +2,7 @@ use crate::Piece;
 use crate::piece::get_char;
 use crate::square::get_square_name;
 
+#[derive(Clone, Copy)]
 pub struct Move {
     pub piece: Piece,
     pub from: u8,

@@ -156,3 +156,27 @@ pub mod move_tests {
         assert_eq!(s, "e4");
     }
 }
+
+pub mod position_tests {
+    use crate::piece::*;
+    use crate::position::*;
+    use crate::r#move::*;
+    use crate::square::Squares::*;
+    use crate::square::get_col_and_row;
+
+    #[test]
+    fn start_move() {
+        let mut position = start_position();
+        let e4 = Move { piece: WHITE_PAWN, from: E2 as u8, to: E4 as u8 };
+        make_move(&mut position, e4);
+    
+
+        let mut expected = start_position();
+        let (from_col, from_row) = get_col_and_row(e4.from);
+        expected.pieces[from_row as usize][from_col as usize] = None;
+        let (to_col, to_row) = get_col_and_row(e4.to);
+        expected.pieces[to_row as usize][to_col as usize] = Some(WHITE_PAWN);
+    
+        assert_eq!(position, expected);
+    }
+}

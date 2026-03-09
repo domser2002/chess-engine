@@ -2,7 +2,7 @@ use crate::r#move::Move;
 // use crate::r#move::Move;
 use crate::piece::{Piece, *};
 // use crate::r#move::print_move;
-use crate::position::{START_POSITION, make_move, print_position};
+use crate::position::*;
 use crate::square::Squares::*;
 
 mod r#move;
@@ -14,7 +14,7 @@ mod public_test;
 
 fn main()
 {
-    let mut position = START_POSITION;
+    let mut position = start_position();
     print_position(position);
     let e4 = Move {piece: WHITE_PAWN, from: E2 as u8 , to: E4 as u8};
     make_move(&mut position, e4);

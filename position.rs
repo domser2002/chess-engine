@@ -1,7 +1,7 @@
 use crate::{Piece, r#move::Move, piece::*, square::*};
 use colored::*;
 // use crate::Move;
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub struct Position {
     pub pieces: [[Option<Piece>; COL_NUM as usize]; ROW_NUM as usize],
     // for later
@@ -12,14 +12,16 @@ pub struct Position {
     // pub black_short_castle: bool,
 }
 
-pub static START_POSITION: Position = Position {
+pub fn start_position() -> Position {
+ Position {
     pieces: [
         [Some(WHITE_ROOK), Some(WHITE_KNIGHT), Some(WHITE_BISHOP), Some(WHITE_QUEEN), Some(WHITE_KING), Some(WHITE_BISHOP), Some(WHITE_KNIGHT), Some(WHITE_ROOK)],
         [Some(WHITE_PAWN); 8], 
         [None;8], [None;8], [None; 8], [None; 8],
         [Some(BLACK_PAWN); 8], 
         [Some(BLACK_ROOK) , Some(BLACK_KNIGHT), Some(BLACK_BISHOP), Some(BLACK_QUEEN), Some(BLACK_KING), Some(BLACK_BISHOP), Some(BLACK_KNIGHT), Some(BLACK_ROOK)]]
-};
+    }
+}
 
 fn print_wrapper(c: char, pc: PieceColor) {
     let text = c.to_string();
@@ -64,9 +66,8 @@ pub fn print_position(position: Position) {
 
 
 // TODO:
-// 1. Allow captures.
-// 2. Check if move is legal.
-// 3. Allow special moves- castling, promotion, en passant.
+// 1. Check if move is legal.
+// 2. Allow special moves- castling, promotion, en passant.
 pub fn make_move(position: &mut Position, m: Move) {
     let (from_col_idx, from_row_idx) = get_col_and_row(m.from);
     let (to_col_idx, to_row_idx) = get_col_and_row(m.to);
