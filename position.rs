@@ -75,14 +75,16 @@ pub fn make_move(position: &mut Position, m: Move) {
         Some(src_piece) => {
             let maybe_piece_on_dest: Option<Piece> = position.pieces[to_row_idx as usize][to_col_idx as usize];
             match maybe_piece_on_dest {
-                Some(_dst_piece) => {
-                    panic!("Square is already occupied!");
+                Some(dst_piece) => {
+                    if dst_piece.piece_color == src_piece.piece_color {
+                        panic!("Square is already occupied!");
+                    }
+                    else {}
                 }
-                None => {
-                    position.pieces[from_row_idx as usize][from_col_idx as usize] = None;
-                    position.pieces[to_row_idx as usize][to_col_idx as usize] = Some(src_piece);
-                } 
+                None => {} 
             }
+            position.pieces[from_row_idx as usize][from_col_idx as usize] = None;
+            position.pieces[to_row_idx as usize][to_col_idx as usize] = Some(src_piece);
         }
         None => {
             panic!("No piece on source square!");
