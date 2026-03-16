@@ -1,9 +1,10 @@
-use crate::{Piece, r#move::Move, piece::*, square::*};
+use crate::{Piece, PieceColor, r#move::Move, piece::*, square::{self, *}};
 use colored::*;
 // use crate::Move;
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub struct Position {
     pub pieces: [[Option<Piece>; COL_NUM as usize]; ROW_NUM as usize],
+    pub turn: PieceColor,
     // for later
     // pub last_move: Move,
     // pub white_long_castle: bool,
@@ -19,7 +20,8 @@ pub fn start_position() -> Position {
         [Some(WHITE_PAWN); 8], 
         [None;8], [None;8], [None; 8], [None; 8],
         [Some(BLACK_PAWN); 8], 
-        [Some(BLACK_ROOK) , Some(BLACK_KNIGHT), Some(BLACK_BISHOP), Some(BLACK_QUEEN), Some(BLACK_KING), Some(BLACK_BISHOP), Some(BLACK_KNIGHT), Some(BLACK_ROOK)]]
+        [Some(BLACK_ROOK) , Some(BLACK_KNIGHT), Some(BLACK_BISHOP), Some(BLACK_QUEEN), Some(BLACK_KING), Some(BLACK_BISHOP), Some(BLACK_KNIGHT), Some(BLACK_ROOK)]],
+        turn: PieceColor::White
     }
 }
 
@@ -64,6 +66,43 @@ pub fn print_position(position: Position) {
     println!("{horizontal_line}");
 }
 
+pub fn square_free(square: u8, position: Position) -> bool
+{
+    let (col,row) = get_col_and_row(square);
+    let maybe_piece = position.pieces[row as usize][col as usize];
+    match maybe_piece {
+        None => {return true;}
+        Some(_p) => { return false; }
+    }
+}
+
+pub fn legal_moves(position: Position) -> Vec<Move> {
+    let v = Vec::new();
+    for square in 0..(ROW_NUM * COL_NUM) {
+        let (col_idx, row_idx) = get_col_and_row(square);
+        let maybe_piece = position.pieces[row_idx as usize][col_idx as usize];
+        match maybe_piece {
+            None => {}
+            Some(piece) => {
+                if position.turn == piece.piece_color {
+                    match piece.piece_type {
+                        PieceType::Pawn => {
+                            if square_free(square + 1, position) { // not +1
+
+                            }
+                        }
+                        PieceType::Knight => {}
+                        PieceType::Bishop => {}
+                        PieceType::Rook => {}
+                        PieceType::Queen => {}
+                        PieceType::King => {}
+                    }
+                }
+            }
+        }
+    }
+    v
+}
 
 // TODO:
 // 1. Check if move is legal.
