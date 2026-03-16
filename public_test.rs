@@ -179,4 +179,40 @@ pub mod position_tests {
     
         assert_eq!(position, expected);
     }
+
+    #[test]
+    fn capture() {
+        let mut position = start_position();
+        let (e4_col, e4_row) = get_col_and_row(E4 as u8);
+        let (f5_col, f5_row) = get_col_and_row(F5 as u8);
+        position.pieces[e4_row as usize][e4_col as usize] = Some(WHITE_PAWN);
+        position.pieces[f5_row as usize][f5_col as usize] = Some(BLACK_PAWN);
+        let ef5 = Move { piece: WHITE_PAWN, from: E4 as u8, to: F5 as u8 };
+        make_move(&mut position, ef5);
+        let mut expected = start_position();
+        expected.pieces[f5_row as usize][f5_col as usize] = Some(WHITE_PAWN);
+        assert_eq!(position, expected);
+    }
+
+    #[test]
+    #[should_panic(expected = "Square is already occupied!")]
+    fn capture_own_piece() {
+        let mut position = start_position();
+        let (e4_col, e4_row) = get_col_and_row(E4 as u8);
+        let (f5_col, f5_row) = get_col_and_row(F5 as u8);
+        position.pieces[e4_row as usize][e4_col as usize] = Some(WHITE_PAWN);
+        position.pieces[f5_row as usize][f5_col as usize] = Some(WHITE_PAWN);
+        let ef5 = Move { piece: WHITE_PAWN, from: E4 as u8, to: F5 as u8 };
+        make_move(&mut position, ef5);
+    }
+
+    #[test]
+    #[should_panic(expected = "No piece on source square!")]
+    fn no_piece() {
+        let mut position = start_position();
+        let (f5_col, f5_row) = get_col_and_row(F5 as u8);
+        position.pieces[f5_row as usize][f5_col as usize] = Some(BLACK_PAWN);
+        let ef5 = Move { piece: WHITE_PAWN, from: E4 as u8, to: F5 as u8 };
+        make_move(&mut position, ef5);
+    }
 }
