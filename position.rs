@@ -103,14 +103,14 @@ pub fn legal_moves(position: Position) -> Vec<Move> {
                             let dest_row_idx = ((row_idx as i8) + (1 as i8) * direction) as u8;
                             let dest_col_idx = col_idx;
                             if square_free(dest_row_idx, dest_col_idx, position) {
-                                let possible_move: Move = Move { piece: piece, from: square, to: get_square_idx(dest_row_idx, dest_col_idx) };
+                                let possible_move: Move = Move::build(piece, square, get_square_idx(dest_row_idx, dest_col_idx));
                                 v.push(possible_move);
                             }
                             if (row_idx == 1 && direction == 1) || (row_idx == 6 && direction == -1) {
                                 let dest_row_idx = ((row_idx as i8) + (2 as i8) * direction) as u8;
                                 let dest_col_idx = col_idx;
                                 if square_free(dest_row_idx, dest_col_idx, position) {
-                                    let possible_move: Move = Move { piece: piece, from: square, to: get_square_idx(dest_row_idx, dest_col_idx) };
+                                    let possible_move: Move = Move::build(piece, square, get_square_idx(dest_row_idx, dest_col_idx));
                                     v.push(possible_move);
                                 }
                             }
@@ -118,7 +118,7 @@ pub fn legal_moves(position: Position) -> Vec<Move> {
                                 let dest_row_idx = ((row_idx as i8) + (1 as i8) * direction) as u8;
                                 let dest_col_idx = col_idx + 1;
                                 if square_occupied_not_by_color(dest_row_idx, dest_col_idx, position, piece.piece_color) {
-                                    let possible_move: Move = Move { piece: piece, from: square, to: get_square_idx(dest_row_idx, dest_col_idx) };
+                                    let possible_move: Move = Move::build(piece, square, get_square_idx(dest_row_idx, dest_col_idx)).capture();
                                     v.push(possible_move);
                                 }
                             }
@@ -126,7 +126,7 @@ pub fn legal_moves(position: Position) -> Vec<Move> {
                                 let dest_row_idx = ((row_idx as i8) + (1 as i8) * direction) as u8;
                                 let dest_col_idx = col_idx - 1;
                                 if square_occupied_not_by_color(dest_row_idx, dest_col_idx, position, piece.piece_color) {
-                                    let possible_move: Move = Move { piece: piece, from: square, to: get_square_idx(dest_row_idx, dest_col_idx) };
+                                    let possible_move: Move = Move::build(piece, square, get_square_idx(dest_row_idx, dest_col_idx)).capture();
                                     v.push(possible_move);
                                 }
                             }

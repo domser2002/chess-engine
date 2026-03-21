@@ -16,10 +16,10 @@ fn main()
 {
     let mut position = start_position();
     print_position(position);
-    let e4 = Move {piece: WHITE_PAWN, from: E2 as u8 , to: E4 as u8};
+    let e4 = Move::build(WHITE_PAWN, E2 as u8 , E4 as u8);
     make_move(&mut position, e4);
     print_position(position);
-    let d5 = Move {piece: BLACK_PAWN, from: D7 as u8, to: D5 as u8};
+    let d5 = Move::build(BLACK_PAWN, D7 as u8, D5 as u8);
     make_move(&mut position, d5);
     print_position(position);
     // let ed5 = Move {piece: WHITE_PAWN, from: E4 as u8, to: D5 as u8};

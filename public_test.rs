@@ -117,42 +117,42 @@ pub mod move_tests {
 
     #[test]
     fn rook_move_simple_square() {
-        let m = Move {piece: WHITE_ROOK, from: A2 as u8, to: A1 as u8};
+        let m = Move::build(WHITE_ROOK, A2 as u8, A1 as u8);
         let s = print_move(m);
         assert_eq!(s, "Ra1");
     }
     
     #[test]
     fn knight_move() {
-        let m = Move {piece: WHITE_KNIGHT, from: G1 as u8, to: F3 as u8};
+        let m = Move::build( WHITE_KNIGHT, G1 as u8,  F3 as u8);
         let s = print_move(m);
         assert_eq!(s, "Nf3");
     }
 
     #[test]
     fn bishop_move() {
-        let m = Move {piece: BLACK_BISHOP, from: F1 as u8, to: C4 as u8};
+        let m = Move::build(BLACK_BISHOP, F1 as u8, C4 as u8);
         let s = print_move(m);
         assert_eq!(s, "Bc4");
     }
 
     #[test]
     fn queen_move() {
-        let m = Move {piece: WHITE_QUEEN, from: D1 as u8, to: H5 as u8};
+        let m = Move::build(WHITE_QUEEN, D1 as u8, H5 as u8);
         let s = print_move(m);
         assert_eq!(s, "Qh5");
     }
 
     #[test]
     fn king_move() {
-        let m = Move {piece: WHITE_KING, from: E1 as u8, to: F1 as u8};
+        let m = Move::build(WHITE_KING, E1 as u8, F1 as u8);
         let s = print_move(m);
         assert_eq!(s, "Kf1");
     }
 
     #[test]
     fn pawn_move() {
-        let m = Move {piece: BLACK_PAWN, from: E2 as u8, to: E4 as u8};
+        let m = Move::build(WHITE_PAWN, E2 as u8, E4 as u8);
         let s = print_move(m);
         assert_eq!(s, "e4");
     }
@@ -168,7 +168,7 @@ pub mod position_tests {
     #[test]
     fn start_move() {
         let mut position = start_position();
-        let e4 = Move { piece: WHITE_PAWN, from: E2 as u8, to: E4 as u8 };
+        let e4 = Move::build(WHITE_PAWN, E2 as u8, E4 as u8);
         make_move(&mut position, e4);
     
 
@@ -188,7 +188,7 @@ pub mod position_tests {
         let (f5_col, f5_row) = get_col_and_row(F5 as u8);
         position.pieces[e4_row as usize][e4_col as usize] = Some(WHITE_PAWN);
         position.pieces[f5_row as usize][f5_col as usize] = Some(BLACK_PAWN);
-        let ef5 = Move { piece: WHITE_PAWN, from: E4 as u8, to: F5 as u8 };
+        let ef5 = Move::build(WHITE_PAWN, E4 as u8, F5 as u8).capture();
         make_move(&mut position, ef5);
         let mut expected = start_position();
         expected.pieces[f5_row as usize][f5_col as usize] = Some(WHITE_PAWN);
@@ -204,7 +204,7 @@ pub mod position_tests {
         let (f5_col, f5_row) = get_col_and_row(F5 as u8);
         position.pieces[e4_row as usize][e4_col as usize] = Some(WHITE_PAWN);
         position.pieces[f5_row as usize][f5_col as usize] = Some(WHITE_PAWN);
-        let ef5 = Move { piece: WHITE_PAWN, from: E4 as u8, to: F5 as u8 };
+        let ef5 = Move::build(WHITE_PAWN, E4 as u8, F5 as u8).capture();
         make_move(&mut position, ef5);
     }
 
@@ -214,7 +214,7 @@ pub mod position_tests {
         let mut position = start_position();
         let (f5_col, f5_row) = get_col_and_row(F5 as u8);
         position.pieces[f5_row as usize][f5_col as usize] = Some(BLACK_PAWN);
-        let ef5 = Move { piece: WHITE_PAWN, from: E4 as u8, to: F5 as u8 };
+        let ef5 = Move::build(WHITE_PAWN, E4 as u8, F5 as u8).capture();
         make_move(&mut position, ef5);
     }
 }
