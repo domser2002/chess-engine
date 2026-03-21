@@ -16,6 +16,10 @@ pub enum Squares {
     H1, H2, H3, H4, H5, H6, H7, H8,
 }
 
+pub fn get_square_idx(row: u8, col: u8) -> u8 {
+    col * ROW_NUM + row + 1
+}
+
 pub fn get_col_and_row(square: u8) -> (u8, u8) {
     if square < 1 || square > 64 {
         panic!("Invalid square!");

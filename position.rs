@@ -1,5 +1,6 @@
-use crate::{Piece, PieceColor, r#move::Move, piece::*, square::{self, *}};
+use crate::{Piece, PieceColor, r#move::Move, piece::{self, *}, square::{self, *}};
 use colored::*;
+use crate::print_move;
 // use crate::Move;
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub struct Position {
@@ -66,9 +67,8 @@ pub fn print_position(position: Position) {
     println!("{horizontal_line}");
 }
 
-pub fn square_free(square: u8, position: Position) -> bool
+pub fn square_free(row: u8, col: u8, position: Position) -> bool
 {
-    let (col,row) = get_col_and_row(square);
     let maybe_piece = position.pieces[row as usize][col as usize];
     match maybe_piece {
         None => {return true;}
@@ -76,9 +76,18 @@ pub fn square_free(square: u8, position: Position) -> bool
     }
 }
 
+pub fn square_occupied_not_by_color(row: u8, col: u8, position: Position, piece_color: PieceColor) -> bool
+{
+    let maybe_piece = position.pieces[row as usize][col as usize];
+    match maybe_piece {
+        None => {return false;}
+        Some(p) => { return p.piece_color != piece_color; }
+    }
+}
+
 pub fn legal_moves(position: Position) -> Vec<Move> {
-    let v = Vec::new();
-    for square in 0..(ROW_NUM * COL_NUM) {
+    let mut v = Vec::new();
+    for square in 1..=(ROW_NUM * COL_NUM) {
         let (col_idx, row_idx) = get_col_and_row(square);
         let maybe_piece = position.pieces[row_idx as usize][col_idx as usize];
         match maybe_piece {
@@ -87,8 +96,39 @@ pub fn legal_moves(position: Position) -> Vec<Move> {
                 if position.turn == piece.piece_color {
                     match piece.piece_type {
                         PieceType::Pawn => {
-                            if square_free(square + 1, position) { // not +1
-
+                            let mut direction: i8 = 1;
+                            if piece.piece_color == PieceColor::Black {
+                                direction = -1;
+                            }
+                            let dest_row_idx = ((row_idx as i8) + (1 as i8) * direction) as u8;
+                            let dest_col_idx = col_idx;
+                            if square_free(dest_row_idx, dest_col_idx, position) {
+                                let possible_move: Move = Move { piece: piece, from: square, to: get_square_idx(dest_row_idx, dest_col_idx) };
+                                v.push(possible_move);
+                            }
+                            if (row_idx == 1 && direction == 1) || (row_idx == 6 && direction == -1) {
+                                let dest_row_idx = ((row_idx as i8) + (2 as i8) * direction) as u8;
+                                let dest_col_idx = col_idx;
+                                if square_free(dest_row_idx, dest_col_idx, position) {
+                                    let possible_move: Move = Move { piece: piece, from: square, to: get_square_idx(dest_row_idx, dest_col_idx) };
+                                    v.push(possible_move);
+                                }
+                            }
+                            if col_idx < COL_NUM - 1 {
+                                let dest_row_idx = ((row_idx as i8) + (1 as i8) * direction) as u8;
+                                let dest_col_idx = col_idx + 1;
+                                if square_occupied_not_by_color(dest_row_idx, dest_col_idx, position, piece.piece_color) {
+                                    let possible_move: Move = Move { piece: piece, from: square, to: get_square_idx(dest_row_idx, dest_col_idx) };
+                                    v.push(possible_move);
+                                }
+                            }
+                            if col_idx > 0 {
+                                let dest_row_idx = ((row_idx as i8) + (1 as i8) * direction) as u8;
+                                let dest_col_idx = col_idx - 1;
+                                if square_occupied_not_by_color(dest_row_idx, dest_col_idx, position, piece.piece_color) {
+                                    let possible_move: Move = Move { piece: piece, from: square, to: get_square_idx(dest_row_idx, dest_col_idx) };
+                                    v.push(possible_move);
+                                }
                             }
                         }
                         PieceType::Knight => {}
@@ -129,5 +169,11 @@ pub fn make_move(position: &mut Position, m: Move) {
         None => {
             panic!("No piece on source square!");
         }
+    }
+    if position.turn == PieceColor::White {
+        position.turn = PieceColor::Black;
+    }
+    else {
+        position.turn = PieceColor::White;
     }
 }
