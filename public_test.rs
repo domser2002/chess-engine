@@ -113,45 +113,46 @@ pub mod piece_test {
 pub mod move_tests {
     use crate::r#move::*;
     use crate::piece::*;
+    use crate::square::Squares::*;
 
     #[test]
     fn rook_move_simple_square() {
-        let m = Move {piece: WHITE_ROOK, from: 2, to: 1};
+        let m = Move {piece: WHITE_ROOK, from: A2 as u8, to: A1 as u8};
         let s = print_move(m);
         assert_eq!(s, "Ra1");
     }
     
     #[test]
     fn knight_move() {
-        let m = Move {piece: WHITE_KNIGHT, from: 2, to: 43};
+        let m = Move {piece: WHITE_KNIGHT, from: G1 as u8, to: F3 as u8};
         let s = print_move(m);
         assert_eq!(s, "Nf3");
     }
 
     #[test]
     fn bishop_move() {
-        let m = Move {piece: BLACK_BISHOP, from: 2, to: 20};
+        let m = Move {piece: BLACK_BISHOP, from: F1 as u8, to: C4 as u8};
         let s = print_move(m);
         assert_eq!(s, "Bc4");
     }
 
     #[test]
     fn queen_move() {
-        let m = Move {piece: WHITE_QUEEN, from: 2, to: 61};
+        let m = Move {piece: WHITE_QUEEN, from: D1 as u8, to: H5 as u8};
         let s = print_move(m);
         assert_eq!(s, "Qh5");
     }
 
     #[test]
     fn king_move() {
-        let m = Move {piece: WHITE_KING, from: 2, to: 41};
+        let m = Move {piece: WHITE_KING, from: E1 as u8, to: F1 as u8};
         let s = print_move(m);
         assert_eq!(s, "Kf1");
     }
 
     #[test]
     fn pawn_move() {
-        let m = Move {piece: BLACK_PAWN, from: 2, to: 36};
+        let m = Move {piece: BLACK_PAWN, from: E2 as u8, to: E4 as u8};
         let s = print_move(m);
         assert_eq!(s, "e4");
     }
@@ -176,7 +177,7 @@ pub mod position_tests {
         expected.pieces[from_row as usize][from_col as usize] = None;
         let (to_col, to_row) = get_col_and_row(e4.to);
         expected.pieces[to_row as usize][to_col as usize] = Some(WHITE_PAWN);
-    
+        expected.turn = PieceColor::Black;
         assert_eq!(position, expected);
     }
 
@@ -191,6 +192,7 @@ pub mod position_tests {
         make_move(&mut position, ef5);
         let mut expected = start_position();
         expected.pieces[f5_row as usize][f5_col as usize] = Some(WHITE_PAWN);
+        expected.turn = PieceColor::Black;
         assert_eq!(position, expected);
     }
 
