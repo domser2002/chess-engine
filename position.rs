@@ -85,6 +85,22 @@ pub fn square_occupied_not_by_color(row: u8, col: u8, position: Position, piece_
     }
 }
 
+fn try_move(dest_row_idx: i8, dest_col_idx: i8, square:u8, position: Position, piece: Piece, v: &mut Vec<Move>) -> bool {
+    if dest_row_idx < (ROW_NUM as i8) && dest_col_idx < (COL_NUM as i8) && dest_row_idx >= 0 && dest_col_idx >= 0 {
+        if square_free(dest_row_idx as u8, dest_col_idx as u8, position) {
+            let possible_move = Move::build(piece, square, get_square_idx(dest_row_idx as u8, dest_col_idx as u8));
+            v.push(possible_move);
+            return true;
+        }
+        else if square_occupied_not_by_color(dest_row_idx as u8, dest_col_idx as u8, position, piece.piece_color) {
+            let possible_move = Move::build(piece, square, get_square_idx(dest_row_idx as u8, dest_col_idx as u8));
+            v.push(possible_move);
+            return true;
+        }
+    }
+    false  
+}
+
 pub fn legal_moves(position: Position) -> Vec<Move> {
     let mut v = Vec::new();
     for square in 1..=(ROW_NUM * COL_NUM) {
@@ -131,8 +147,44 @@ pub fn legal_moves(position: Position) -> Vec<Move> {
                                 }
                             }
                         }
-                        PieceType::Knight => {}
-                        PieceType::Bishop => {}
+                        PieceType::Knight => {
+                            try_move((row_idx as i8) + 2, (col_idx as i8) + 1, square, position, piece, &mut v);
+                            try_move((row_idx as i8) + 1, (col_idx as i8) + 2, square, position, piece, &mut v);
+                            try_move((row_idx as i8) - 2, (col_idx as i8) + 1, square, position, piece, &mut v);
+                            try_move((row_idx as i8) - 1, (col_idx as i8) + 2, square, position, piece, &mut v);
+                            try_move((row_idx as i8) + 2, (col_idx as i8) - 1, square, position, piece, &mut v);
+                            try_move((row_idx as i8) + 1, (col_idx as i8) - 2, square, position, piece, &mut v);
+                            try_move((row_idx as i8) - 2, (col_idx as i8) - 1, square, position, piece, &mut v);
+                            try_move((row_idx as i8) - 1, (col_idx as i8) - 2, square, position, piece, &mut v);
+                        }
+                        PieceType::Bishop => {
+                            let mut success = true;
+                            let mut i= 1;
+                            while success {
+                                success = try_move((row_idx as i8) + i, (col_idx as i8) + i, square, position, piece, &mut v);
+                                i += 1;
+                            }
+                            success = true;
+                            i = 1; 
+                            while success {
+                                success = try_move((row_idx as i8) + i, (col_idx as i8) - i, square, position, piece, &mut v);
+                                i += 1;
+                            }
+
+                            success = true;
+                            i = 1; 
+                            while success {
+                                success = try_move((row_idx as i8) - i, (col_idx as i8) + i, square, position, piece, &mut v);
+                                i += 1;
+                            }
+
+                            success = true;
+                            i = 1; 
+                            while success {
+                                success = try_move((row_idx as i8) - i, (col_idx as i8) - i, square, position, piece, &mut v);
+                                i += 1;
+                            }
+                        }
                         PieceType::Rook => {}
                         PieceType::Queen => {}
                         PieceType::King => {}
