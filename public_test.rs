@@ -156,6 +156,35 @@ pub mod move_tests {
         let s = print_move(m);
         assert_eq!(s, "e4");
     }
+
+    #[test]
+    fn pawn_capture() {
+        let m = Move::build(WHITE_PAWN, E4 as u8, D5 as u8).capture();
+        let s = print_move(m);
+        assert_eq!(s, "ed5");
+    }
+
+    #[test]
+    fn bishop_capture() {
+        let m = Move::build(BLACK_BISHOP, F1 as u8, C4 as u8).capture();
+        let s = print_move(m);
+        assert_eq!(s, "Bc4");
+    }
+
+
+    #[test]
+    fn promotion() {
+        let m = Move::build(WHITE_PAWN, F7 as u8, F8 as u8).promote_to(WHITE_QUEEN);
+        let s = print_move(m);
+        assert_eq!(s, "f8=Q");
+    }
+
+    #[test]
+    fn promotion_with_capture() {
+        let m = Move::build(WHITE_PAWN, F7 as u8, E8 as u8).capture().promote_to(WHITE_QUEEN);
+        let s = print_move(m);
+        assert_eq!(s, "fe8=Q");
+    }
 }
 
 pub mod position_tests {

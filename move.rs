@@ -1,5 +1,5 @@
 use crate::Piece;
-use crate::piece::get_char;
+use crate::piece::{PieceType, get_char};
 use crate::square::get_square_name;
 
 #[derive(Clone, Copy)]
@@ -26,6 +26,9 @@ impl Move {
     }
 
     pub fn promote_to(mut self, piece: Piece) -> Self {
+        if self.piece.piece_type != PieceType::Pawn {
+            panic!("Only pawns can promote!");
+        }
         self.new_piece = Some(piece);
         self
     }
@@ -35,7 +38,20 @@ pub fn print_move(m: Move) -> String
 {
     let mut s = String::new();
     s.extend(get_char(m.piece));
+    if m.capture && m.piece.piece_type == PieceType::Pawn {
+        let src = get_square_name(m.from);
+        s.extend(src.chars().next());
+    }
     s.push_str(&get_square_name(m.to));
+    if m.piece.piece_type == PieceType::Pawn {
+        match m.new_piece {
+            Some(new_piece) => {
+                s.push('=');
+                s.extend(get_char(new_piece));
+            }
+            None => {}
+        }
+    }
     s
     // println!("{s}");
 }
