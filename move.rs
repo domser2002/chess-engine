@@ -1,6 +1,8 @@
 use crate::Piece;
-use crate::piece::{PieceType, get_char};
+use crate::piece::{BLACK_KING, PieceColor, PieceType, WHITE_KING, get_char};
 use crate::square::get_square_name;
+pub static SHORT_CASTLING_SQUARE: u8 = 65;
+pub static LONG_CASTLING_SQUARE: u8 = 66;
 
 #[derive(Clone, Copy)]
 pub struct Move {
@@ -17,6 +19,40 @@ impl Move {
             piece, from, to,
             capture: false,
             new_piece: None,
+        }
+    }
+
+    pub fn build_short_castling(color: PieceColor) -> Self {
+        let piece;
+        if color == PieceColor::White {
+            piece = WHITE_KING;
+        }
+        else {
+            piece = BLACK_KING;
+        }
+        Self {
+            piece: piece,
+            from: SHORT_CASTLING_SQUARE,
+            to: SHORT_CASTLING_SQUARE,
+            capture: false,
+            new_piece: None
+        }
+    }
+
+    pub fn build_long_castling(color: PieceColor) -> Self {
+        let piece;
+        if color == PieceColor::White {
+            piece = WHITE_KING;
+        }
+        else {
+            piece = BLACK_KING;
+        }
+        Self {
+            piece: piece,
+            from: LONG_CASTLING_SQUARE,
+            to: LONG_CASTLING_SQUARE,
+            capture: false,
+            new_piece: None
         }
     }
 
@@ -37,6 +73,14 @@ impl Move {
 pub fn print_move(m: Move) -> String
 {
     let mut s = String::new();
+    if m.from == SHORT_CASTLING_SQUARE {
+        s.push_str("0-0");
+        return s;
+    }
+    if m.from == LONG_CASTLING_SQUARE {
+        s.push_str("0-0-0");
+        return s;
+    }
     s.extend(get_char(m.piece));
     if m.capture && m.piece.piece_type == PieceType::Pawn {
         let src = get_square_name(m.from);

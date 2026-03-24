@@ -185,6 +185,20 @@ pub mod move_tests {
         let s = print_move(m);
         assert_eq!(s, "fe8=Q");
     }
+
+    #[test]
+    fn short_castling() {
+        let m = Move::build_short_castling(PieceColor::White);
+        let s = print_move(m);
+        assert_eq!(s, "0-0");
+    }    
+
+    #[test]
+    fn long_castling() {
+        let m = Move::build_long_castling(PieceColor::Black);
+        let s = print_move(m);
+        assert_eq!(s, "0-0-0");
+    }    
 }
 
 pub mod position_tests {
