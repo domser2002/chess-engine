@@ -11,23 +11,20 @@ mod piece;
 mod square;
 #[cfg(test)]
 mod public_test;
+use rand::seq::SliceRandom;
 
 fn main()
 {
     let mut position = start_position();
     print_position(position);
-    let e4 = Move::build(WHITE_PAWN, E2 as u8 , E4 as u8);
-    make_move(&mut position, e4);
-    print_position(position);
-    let d5 = Move::build(BLACK_PAWN, D7 as u8, D5 as u8);
-    make_move(&mut position, d5);
-    print_position(position);
-    // let ed5 = Move {piece: WHITE_PAWN, from: E4 as u8, to: D5 as u8};
-    // make_move(&mut position, ed5);
-    // print_position(position);
-    let legal_moves = legal_moves(position);
-    for m in legal_moves {
-        let s = print_move(m);
-        println!("{s}");
+    for _i in 0..10 {
+        let legal_moves = legal_moves(position);
+        let mut rng = rand::thread_rng();
+        if let Some(choice) = legal_moves.choose(&mut rng) {
+            let s = print_move(*choice);
+            println!("{s}");
+            make_move(&mut position, *choice);
+            print_position(position);
+        }
     }
 }
