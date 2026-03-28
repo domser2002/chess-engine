@@ -85,15 +85,15 @@ pub fn square_occupied_not_by_color(row: u8, col: u8, position: Position, piece_
     }
 }
 
-fn try_move(dest_row_idx: i8, dest_col_idx: i8, square:u8, position: Position, piece: Piece, v: &mut Vec<Move>) -> bool {
+fn try_move(dest_row_idx: i8, dest_col_idx: i8, square:u8, position: Position, piece: Piece, v: &mut Vec<Move>, allow_captures: bool, allow_non_captures: bool) -> bool {
     if dest_row_idx < (ROW_NUM as i8) && dest_col_idx < (COL_NUM as i8) && dest_row_idx >= 0 && dest_col_idx >= 0 {
-        if square_free(dest_row_idx as u8, dest_col_idx as u8, position) {
+        if allow_non_captures && square_free(dest_row_idx as u8, dest_col_idx as u8, position) {
             let possible_move = Move::build(piece, square, get_square_idx(dest_row_idx as u8, dest_col_idx as u8));
             v.push(possible_move);
             return true;
         }
-        else if square_occupied_not_by_color(dest_row_idx as u8, dest_col_idx as u8, position, piece.piece_color) {
-            let possible_move = Move::build(piece, square, get_square_idx(dest_row_idx as u8, dest_col_idx as u8));
+        else if allow_captures && square_occupied_not_by_color(dest_row_idx as u8, dest_col_idx as u8, position, piece.piece_color) {
+            let possible_move = Move::build(piece, square, get_square_idx(dest_row_idx as u8, dest_col_idx as u8)).capture();
             v.push(possible_move);
             return true;
         }
@@ -101,62 +101,84 @@ fn try_move(dest_row_idx: i8, dest_col_idx: i8, square:u8, position: Position, p
     false  
 }
 
-fn try_diagonal_moves(row_idx: u8, col_idx: u8, square:u8, position: Position, piece: Piece, v: &mut Vec<Move>) {
+fn try_forward_vertical_moves(row_idx: u8, col_idx: u8, square:u8, position: Position, piece: Piece, v: &mut Vec<Move>, max_len: i8, allow_captures: bool) {
     let mut success = true;
-    let mut i= 1;
-    while success {
-        success = try_move((row_idx as i8) + i, (col_idx as i8) + i, square, position, piece, v);
-        i += 1;
-    }
-    success = true;
-    i = 1; 
-    while success {
-        success = try_move((row_idx as i8) + i, (col_idx as i8) - i, square, position, piece, v);
-        i += 1;
-    }
-
-    success = true;
-    i = 1; 
-    while success {
-        success = try_move((row_idx as i8) - i, (col_idx as i8) + i, square, position, piece, v);
-        i += 1;
-    }
-
-    success = true;
-    i = 1; 
-    while success {
-        success = try_move((row_idx as i8) - i, (col_idx as i8) - i, square, position, piece, v);
+    let mut i: i8 = 1;
+    while success && i <= max_len {
+        success = try_move((row_idx as i8) + i, col_idx as i8, square, position, piece, v, allow_captures, true);
         i += 1;
     }
 }
 
-fn try_straight_moves(row_idx: u8, col_idx: u8, square:u8, position: Position, piece: Piece, v: &mut Vec<Move>) {
+fn try_backward_vertical_moves(row_idx: u8, col_idx: u8, square:u8, position: Position, piece: Piece, v: &mut Vec<Move>, max_len: i8, allow_captures: bool) {
     let mut success = true;
-    let mut i= 1;
-    while success {
-        success = try_move((row_idx as i8) + i, col_idx as i8, square, position, piece, v);
+    let mut i: i8 = 1;   
+    while success && i <= max_len {
+        success = try_move((row_idx as i8) - i, col_idx as i8, square, position, piece, v, allow_captures, true);
         i += 1;
     }
-    success = true;
-    i = 1; 
-    while success {
-        success = try_move((row_idx as i8) - i, col_idx as i8, square, position, piece, v);
+}
+
+fn try_vertical_moves(row_idx: u8, col_idx: u8, square:u8, position: Position, piece: Piece, v: &mut Vec<Move>, max_len: i8, allow_captures: bool) {
+    try_forward_vertical_moves(row_idx, col_idx, square, position, piece, v, max_len, allow_captures);
+    try_backward_vertical_moves(row_idx, col_idx, square, position, piece, v, max_len, allow_captures);
+}
+
+fn try_horizontal_moves(row_idx: u8, col_idx: u8, square:u8, position: Position, piece: Piece, v: &mut Vec<Move>, max_len: i8) {
+    let mut success = true;
+    let mut i: i8 = 1;
+    while success && i <= max_len {
+        success = try_move(row_idx as i8, (col_idx as i8) + i, square, position, piece, v, true, true);
         i += 1;
     }
 
     success = true;
     i = 1; 
-    while success {
-        success = try_move(row_idx as i8, (col_idx as i8) + i, square, position, piece, v);
+    while success && i <= max_len {
+        success = try_move(row_idx as i8, (col_idx as i8) - i, square, position, piece, v, true, true);
+        i += 1;
+    }
+}
+
+fn try_forward_diagonal_moves(row_idx: u8, col_idx: u8, square:u8, position: Position, piece: Piece, v: &mut Vec<Move>, max_len: i8, allow_non_captures: bool) {
+    let mut success = true;
+    let mut i: i8 = 1;
+    while success && i <= max_len {
+        success = try_move((row_idx as i8) + i, (col_idx as i8) + i, square, position, piece, v, true, allow_non_captures);
+        i += 1;
+    }
+    success = true;
+    i = 1; 
+    while success && i <= max_len {
+        success = try_move((row_idx as i8) + i, (col_idx as i8) - i, square, position, piece, v, true, allow_non_captures);
+        i += 1;
+    }
+}
+
+fn try_backward_diagonal_moves(row_idx: u8, col_idx: u8, square:u8, position: Position, piece: Piece, v: &mut Vec<Move>, max_len: i8, allow_non_captures: bool) {
+    let mut success = true;
+    let mut i: i8 = 1;
+    while success && i <= max_len {
+        success = try_move((row_idx as i8) - i, (col_idx as i8) + i, square, position, piece, v, true, allow_non_captures);
         i += 1;
     }
 
     success = true;
     i = 1; 
-    while success {
-        success = try_move(row_idx as i8, (col_idx as i8) - i, square, position, piece, v);
+    while success && i <= max_len {
+        success = try_move((row_idx as i8) - i, (col_idx as i8) - i, square, position, piece, v, true, allow_non_captures);
         i += 1;
     }
+}
+
+fn try_diagonal_moves(row_idx: u8, col_idx: u8, square:u8, position: Position, piece: Piece, v: &mut Vec<Move>, max_len: i8) {
+    try_forward_diagonal_moves(row_idx, col_idx, square, position, piece, v, max_len, true);
+    try_backward_diagonal_moves(row_idx, col_idx, square, position, piece, v, max_len, true);
+}
+
+fn try_straight_moves(row_idx: u8, col_idx: u8, square:u8, position: Position, piece: Piece, v: &mut Vec<Move>, max_len: i8) {
+    try_vertical_moves(row_idx, col_idx, square, position, piece, v, max_len, true);
+    try_horizontal_moves(row_idx, col_idx, square, position, piece, v, max_len);
 }
 
 pub fn legal_moves(position: Position) -> Vec<Move> {
@@ -171,61 +193,46 @@ pub fn legal_moves(position: Position) -> Vec<Move> {
                     match piece.piece_type {
                         PieceType::Pawn => {
                             let mut direction: i8 = 1;
+                            let mut max_len: u8 = 1;
                             if piece.piece_color == PieceColor::Black {
                                 direction = -1;
                             }
-                            let dest_row_idx = ((row_idx as i8) + (1 as i8) * direction) as u8;
-                            let dest_col_idx = col_idx;
-                            if square_free(dest_row_idx, dest_col_idx, position) {
-                                let possible_move: Move = Move::build(piece, square, get_square_idx(dest_row_idx, dest_col_idx));
-                                v.push(possible_move);
-                            }
                             if (row_idx == 1 && direction == 1) || (row_idx == 6 && direction == -1) {
-                                let dest_row_idx = ((row_idx as i8) + (2 as i8) * direction) as u8;
-                                let dest_col_idx = col_idx;
-                                if square_free(dest_row_idx, dest_col_idx, position) {
-                                    let possible_move: Move = Move::build(piece, square, get_square_idx(dest_row_idx, dest_col_idx));
-                                    v.push(possible_move);
-                                }
+                                max_len = 2;
                             }
-                            if col_idx < COL_NUM - 1 {
-                                let dest_row_idx = ((row_idx as i8) + (1 as i8) * direction) as u8;
-                                let dest_col_idx = col_idx + 1;
-                                if square_occupied_not_by_color(dest_row_idx, dest_col_idx, position, piece.piece_color) {
-                                    let possible_move: Move = Move::build(piece, square, get_square_idx(dest_row_idx, dest_col_idx)).capture();
-                                    v.push(possible_move);
-                                }
+                            if direction == 1 {
+                                try_forward_vertical_moves(row_idx, col_idx, square, position, piece, &mut v, max_len as i8, false);
+                                try_forward_diagonal_moves(row_idx, col_idx, square, position, piece, &mut v, max_len as i8, false);
                             }
-                            if col_idx > 0 {
-                                let dest_row_idx = ((row_idx as i8) + (1 as i8) * direction) as u8;
-                                let dest_col_idx = col_idx - 1;
-                                if square_occupied_not_by_color(dest_row_idx, dest_col_idx, position, piece.piece_color) {
-                                    let possible_move: Move = Move::build(piece, square, get_square_idx(dest_row_idx, dest_col_idx)).capture();
-                                    v.push(possible_move);
-                                }
+                            else {
+                                try_backward_vertical_moves(row_idx, col_idx, square, position, piece, &mut v, max_len as i8, false);
+                                try_backward_diagonal_moves(row_idx, col_idx, square, position, piece, &mut v, max_len as i8, false);
                             }
                         }
                         PieceType::Knight => {
-                            try_move((row_idx as i8) + 2, (col_idx as i8) + 1, square, position, piece, &mut v);
-                            try_move((row_idx as i8) + 1, (col_idx as i8) + 2, square, position, piece, &mut v);
-                            try_move((row_idx as i8) - 2, (col_idx as i8) + 1, square, position, piece, &mut v);
-                            try_move((row_idx as i8) - 1, (col_idx as i8) + 2, square, position, piece, &mut v);
-                            try_move((row_idx as i8) + 2, (col_idx as i8) - 1, square, position, piece, &mut v);
-                            try_move((row_idx as i8) + 1, (col_idx as i8) - 2, square, position, piece, &mut v);
-                            try_move((row_idx as i8) - 2, (col_idx as i8) - 1, square, position, piece, &mut v);
-                            try_move((row_idx as i8) - 1, (col_idx as i8) - 2, square, position, piece, &mut v);
+                            try_move((row_idx as i8) + 2, (col_idx as i8) + 1, square, position, piece, &mut v, true, true);
+                            try_move((row_idx as i8) + 1, (col_idx as i8) + 2, square, position, piece, &mut v, true,  true);
+                            try_move((row_idx as i8) - 2, (col_idx as i8) + 1, square, position, piece, &mut v, true,  true);
+                            try_move((row_idx as i8) - 1, (col_idx as i8) + 2, square, position, piece, &mut v, true, true);
+                            try_move((row_idx as i8) + 2, (col_idx as i8) - 1, square, position, piece, &mut v, true, true);
+                            try_move((row_idx as i8) + 1, (col_idx as i8) - 2, square, position, piece, &mut v, true, true);
+                            try_move((row_idx as i8) - 2, (col_idx as i8) - 1, square, position, piece, &mut v, true, true);
+                            try_move((row_idx as i8) - 1, (col_idx as i8) - 2, square, position, piece, &mut v, true, true);
                         }
                         PieceType::Bishop => {
-                            try_diagonal_moves(row_idx, col_idx, square, position, piece, &mut v);
+                            try_diagonal_moves(row_idx, col_idx, square, position, piece, &mut v, 8);
                         }
                         PieceType::Rook => {
-                            try_straight_moves(row_idx, col_idx, square, position, piece, &mut v);
+                            try_straight_moves(row_idx, col_idx, square, position, piece, &mut v, 8);
                         }
                         PieceType::Queen => {
-                            try_diagonal_moves(row_idx, col_idx, square, position, piece, &mut v);
-                            try_straight_moves(row_idx, col_idx, square, position, piece, &mut v);
+                            try_diagonal_moves(row_idx, col_idx, square, position, piece, &mut v, 8);
+                            try_straight_moves(row_idx, col_idx, square, position, piece, &mut v, 8);
                         }
-                        PieceType::King => {}
+                        PieceType::King => {
+                            try_diagonal_moves(row_idx, col_idx, square, position, piece, &mut v, 1);
+                            try_straight_moves(row_idx, col_idx, square, position, piece, &mut v, 1);
+                        }
                     }
                 }
             }
