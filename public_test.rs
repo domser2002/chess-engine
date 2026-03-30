@@ -208,6 +208,7 @@ pub mod position_tests {
     use crate::r#move::*;
     use crate::square::Squares::*;
     use crate::square::get_col_and_row;
+    use pretty_assertions::assert_eq;
 
     #[test]
     fn make_move_start_move() {
@@ -222,6 +223,7 @@ pub mod position_tests {
         let (to_col, to_row) = get_col_and_row(e4.to);
         expected.pieces[to_row as usize][to_col as usize] = Some(WHITE_PAWN);
         expected.turn = PieceColor::Black;
+        expected.last_move = Some(e4);
         assert_eq!(position, expected);
     }
 
@@ -237,6 +239,7 @@ pub mod position_tests {
         let mut expected = start_position();
         expected.pieces[f5_row as usize][f5_col as usize] = Some(WHITE_PAWN);
         expected.turn = PieceColor::Black;
+        expected.last_move = Some(ef5);
         assert_eq!(position, expected);
     }
 
@@ -338,6 +341,56 @@ pub mod position_tests {
             Move::build(WHITE_QUEEN, D1 as u8, D2 as u8),
             Move::build(WHITE_QUEEN, D1 as u8, D3 as u8),
             Move::build(WHITE_KING, E1 as u8, D2 as u8),
+        ];
+        let mut moves = legal_moves(position);
+        expected.sort();
+        moves.sort();
+        assert_eq!(moves, expected);
+    }
+
+    #[test]
+    fn legal_moves_with_en_passant() {
+        let mut position = start_position();
+        let e4 = Move::build(WHITE_PAWN, E2 as u8, E4 as u8);
+        let e5 = Move::build(WHITE_PAWN, E4 as u8, E5 as u8);
+        let b6 = Move::build(BLACK_PAWN, B7 as u8, B6 as u8);
+        let d5 = Move::build(BLACK_PAWN, D7 as u8, D5 as u8);
+        make_move(&mut position, e4);
+        make_move(&mut position, b6);
+        make_move(&mut position, e5);
+        make_move(&mut position, d5);
+        let mut expected = vec![
+            Move::build(WHITE_PAWN, A2 as u8, A3 as u8),
+            Move::build(WHITE_PAWN, A2 as u8, A4 as u8),
+            Move::build(WHITE_PAWN, B2 as u8, B3 as u8),
+            Move::build(WHITE_PAWN, B2 as u8, B4 as u8),
+            Move::build(WHITE_PAWN, C2 as u8, C3 as u8),
+            Move::build(WHITE_PAWN, C2 as u8, C4 as u8),
+            Move::build(WHITE_PAWN, D2 as u8, D3 as u8),
+            Move::build(WHITE_PAWN, D2 as u8, D4 as u8),
+            Move::build(WHITE_PAWN, E5 as u8, E6 as u8),
+            Move::build(WHITE_PAWN, E5 as u8, D6 as u8).capture(),
+            Move::build(WHITE_PAWN, F2 as u8, F3 as u8),
+            Move::build(WHITE_PAWN, F2 as u8, F4 as u8),
+            Move::build(WHITE_PAWN, G2 as u8, G3 as u8),
+            Move::build(WHITE_PAWN, G2 as u8, G4 as u8),
+            Move::build(WHITE_PAWN, H2 as u8, H3 as u8),
+            Move::build(WHITE_PAWN, H2 as u8, H4 as u8),
+            Move::build(WHITE_KNIGHT, B1 as u8, A3 as u8),
+            Move::build(WHITE_KNIGHT, B1 as u8, C3 as u8),
+            Move::build(WHITE_KNIGHT, G1 as u8, F3 as u8),
+            Move::build(WHITE_KNIGHT, G1 as u8, H3 as u8),
+            Move::build(WHITE_KNIGHT, G1 as u8, E2 as u8),
+            Move::build(WHITE_BISHOP, F1 as u8, E2 as u8),
+            Move::build(WHITE_BISHOP, F1 as u8, D3 as u8),
+            Move::build(WHITE_BISHOP, F1 as u8, C4 as u8),
+            Move::build(WHITE_BISHOP, F1 as u8, B5 as u8),
+            Move::build(WHITE_BISHOP, F1 as u8, A6 as u8),
+            Move::build(WHITE_QUEEN, D1 as u8, E2 as u8),
+            Move::build(WHITE_QUEEN, D1 as u8, F3 as u8),
+            Move::build(WHITE_QUEEN, D1 as u8, G4 as u8),
+            Move::build(WHITE_QUEEN, D1 as u8, H5 as u8),
+            Move::build(WHITE_KING, E1 as u8, E2 as u8),
         ];
         let mut moves = legal_moves(position);
         expected.sort();

@@ -1,3 +1,5 @@
+use std::default;
+
 use crate::{Piece, PieceColor, r#move::Move, piece::{self, *}, square::{self, *}};
 use colored::*;
 use crate::print_move;
@@ -7,7 +9,7 @@ pub struct Position {
     pub pieces: [[Option<Piece>; COL_NUM as usize]; ROW_NUM as usize],
     pub turn: PieceColor,
     // for later
-    // pub last_move: Move,
+    pub last_move: Option<Move>,
     // pub white_long_castle: bool,
     // pub white_short_castle: bool,
     // pub black_long_castle: bool,
@@ -22,7 +24,8 @@ pub fn start_position() -> Position {
         [None;8], [None;8], [None; 8], [None; 8],
         [Some(BLACK_PAWN); 8], 
         [Some(BLACK_ROOK) , Some(BLACK_KNIGHT), Some(BLACK_BISHOP), Some(BLACK_QUEEN), Some(BLACK_KING), Some(BLACK_BISHOP), Some(BLACK_KNIGHT), Some(BLACK_ROOK)]],
-        turn: PieceColor::White
+        turn: PieceColor::White,
+        last_move: None,
     }
 }
 
@@ -208,6 +211,30 @@ pub fn legal_moves(position: Position) -> Vec<Move> {
                                 try_backward_vertical_moves(row_idx, col_idx, square, position, piece, &mut v, max_len as i8, false);
                                 try_backward_diagonal_moves(row_idx, col_idx, square, position, piece, &mut v, max_len as i8, false);
                             }
+                            // en passant
+                            match position.last_move {
+                                None => {}
+                                Some(last_move) => {
+                                    match last_move.piece.piece_type {
+                                        PieceType::Pawn => {
+                                            let (last_col_idx, last_row_idx) = get_col_and_row(last_move.to);
+                                            let (_, last_from_row_idx) = get_col_and_row(last_move.from);
+                                            let diff = last_row_idx as i8 - last_from_row_idx as i8;
+                                            if diff == 2 || diff == -2 {
+                                                let mut diff = col_idx as i8 - last_col_idx as i8;
+                                                if diff == -1 {
+                                                    diff = 1;
+                                                }
+                                                if last_row_idx == row_idx && diff == 1 {
+                                                    let possible_move = Move::build(piece, square, get_square_idx(((last_row_idx as i8) + direction) as u8, last_col_idx)).capture();
+                                                    v.push(possible_move);
+                                                }
+                                            }
+                                        }
+                                        _ => {}
+                                    }
+                                }
+                            }
                         }
                         PieceType::Knight => {
                             try_move((row_idx as i8) + 2, (col_idx as i8) + 1, square, position, piece, &mut v, true, true);
@@ -273,4 +300,5 @@ pub fn make_move(position: &mut Position, m: Move) {
     else {
         position.turn = PieceColor::White;
     }
+    position.last_move = Some(m);
 }
