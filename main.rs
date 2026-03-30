@@ -17,7 +17,7 @@ fn main()
 {
     let mut position = start_position();
     print_position(position);
-    for _i in 0..10 {
+    for _i in 0..1000 {
         let legal_moves = legal_moves(position);
         let mut rng = rand::thread_rng();
         if let Some(choice) = legal_moves.choose(&mut rng) {

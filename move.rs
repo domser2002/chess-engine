@@ -4,7 +4,7 @@ use crate::square::get_square_name;
 pub static SHORT_CASTLING_SQUARE: u8 = 65;
 pub static LONG_CASTLING_SQUARE: u8 = 66;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Debug)]
 pub struct Move {
     pub piece: Piece,
     pub from: u8,

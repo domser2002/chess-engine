@@ -1,6 +1,6 @@
 use std::char;
 
-#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug)]
 pub enum PieceType {
     Pawn,
     Knight,
@@ -9,12 +9,12 @@ pub enum PieceType {
     Queen,
     King
 }
-#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug)]
 pub enum PieceColor {
     White,
     Black
 }
-#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug)]
 pub struct Piece {
     pub piece_type: PieceType,
     pub piece_color: PieceColor
