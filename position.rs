@@ -184,6 +184,33 @@ fn try_straight_moves(row_idx: u8, col_idx: u8, square:u8, position: Position, p
     try_horizontal_moves(row_idx, col_idx, square, position, piece, v, max_len);
 }
 
+fn try_en_passant(position: Position, piece: Piece, col_idx: u8, row_idx: u8, square: u8, direction: i8, v: &mut Vec<Move>) {
+    // en passant
+    match position.last_move {
+        None => {}
+        Some(last_move) => {
+            match last_move.piece.piece_type {
+            PieceType::Pawn => {
+                let (last_col_idx, last_row_idx) = get_col_and_row(last_move.to);
+                let (_, last_from_row_idx) = get_col_and_row(last_move.from);
+                let diff = last_row_idx as i8 - last_from_row_idx as i8;
+                if diff == 2 || diff == -2 {
+                    let mut diff = col_idx as i8 - last_col_idx as i8;
+                        if diff == -1 {
+                        diff = 1;
+                        }
+                    if last_row_idx == row_idx && diff == 1 {
+                        let possible_move = Move::build(piece, square, get_square_idx(((last_row_idx as i8) + direction) as u8, last_col_idx)).capture();
+                        v.push(possible_move);
+                    }
+                }
+            }
+            _ => {}
+            }
+        }
+    }
+}
+
 pub fn legal_moves(position: Position) -> Vec<Move> {
     let mut v = Vec::new();
     for square in 1..=(ROW_NUM * COL_NUM) {
@@ -211,30 +238,7 @@ pub fn legal_moves(position: Position) -> Vec<Move> {
                                 try_backward_vertical_moves(row_idx, col_idx, square, position, piece, &mut v, max_len as i8, false);
                                 try_backward_diagonal_moves(row_idx, col_idx, square, position, piece, &mut v, max_len as i8, false);
                             }
-                            // en passant
-                            match position.last_move {
-                                None => {}
-                                Some(last_move) => {
-                                    match last_move.piece.piece_type {
-                                        PieceType::Pawn => {
-                                            let (last_col_idx, last_row_idx) = get_col_and_row(last_move.to);
-                                            let (_, last_from_row_idx) = get_col_and_row(last_move.from);
-                                            let diff = last_row_idx as i8 - last_from_row_idx as i8;
-                                            if diff == 2 || diff == -2 {
-                                                let mut diff = col_idx as i8 - last_col_idx as i8;
-                                                if diff == -1 {
-                                                    diff = 1;
-                                                }
-                                                if last_row_idx == row_idx && diff == 1 {
-                                                    let possible_move = Move::build(piece, square, get_square_idx(((last_row_idx as i8) + direction) as u8, last_col_idx)).capture();
-                                                    v.push(possible_move);
-                                                }
-                                            }
-                                        }
-                                        _ => {}
-                                    }
-                                }
-                            }
+                            try_en_passant(position, piece, col_idx, row_idx, square, direction, &mut v);
                         }
                         PieceType::Knight => {
                             try_move((row_idx as i8) + 2, (col_idx as i8) + 1, square, position, piece, &mut v, true, true);
