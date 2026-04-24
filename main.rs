@@ -9,6 +9,7 @@ mod r#move;
 mod position;
 mod piece;
 mod square;
+mod board;
 #[cfg(test)]
 mod public_test;
 use rand::seq::SliceRandom;
@@ -27,14 +28,24 @@ fn main()
     //         print_position(position);
     //     }
     // }
-    let e4 = Move::build(WHITE_PAWN, E2 as u8, E4 as u8);
-    let e5 = Move::build(WHITE_PAWN, E4 as u8, E5 as u8);
+    let a4 = Move::build(WHITE_PAWN, A2 as u8, A4 as u8);
     let b5 = Move::build(BLACK_PAWN, B7 as u8, B5 as u8);
-    let d5 = Move::build(BLACK_PAWN, D7 as u8, D5 as u8);
-    make_move(&mut position, e4);
+    let ab5 = Move::build(WHITE_PAWN, A4 as u8, B5 as u8).capture();
+    let a5 = Move::build(BLACK_PAWN, A7 as u8, A5 as u8);
+    let b6 = Move::build(WHITE_PAWN, B5 as u8, B6 as u8);
+    let nc6 = Move::build(BLACK_KNIGHT, B8 as u8, C6 as u8);
+    let b7 = Move::build(WHITE_PAWN, B6 as u8, B7 as u8);
+    let ra7 = Move::build(BLACK_ROOK, A8 as u8, A7 as u8);
+
+    make_move(&mut position, a4);
     make_move(&mut position, b5);
-    make_move(&mut position, e5);
-    make_move(&mut position, d5);
+    make_move(&mut position, ab5);
+    make_move(&mut position, a5);
+    make_move(&mut position, b6);
+    make_move(&mut position, nc6);
+    make_move(&mut position, b7);
+    make_move(&mut position, ra7);
+
     print_position(position);
     let legal_moves = legal_moves(position);
     for legal_move in legal_moves {

@@ -88,16 +88,46 @@ pub fn square_occupied_not_by_color(row: u8, col: u8, position: Position, piece_
     }
 }
 
+fn try_promotions(dest_row_idx: i8, piece: Piece, v: &mut Vec<Move>, possible_move: Move) -> bool {
+    if piece.piece_type == PieceType::Pawn && dest_row_idx == 0 {
+        let queen_promotion = possible_move.promote_to(BLACK_QUEEN);
+        v.push(queen_promotion);
+        let rook_promotion = possible_move.promote_to(BLACK_ROOK);
+        v.push(rook_promotion);
+        let bishop_promotion = possible_move.promote_to(BLACK_BISHOP);
+        v.push(bishop_promotion);
+        let knight_promotion = possible_move.promote_to(BLACK_KNIGHT);
+        v.push(knight_promotion);
+        return true;
+    }
+    else if piece.piece_type == PieceType::Pawn && dest_row_idx == 7 {
+        let queen_promotion = possible_move.promote_to(WHITE_QUEEN);
+        v.push(queen_promotion);
+        let rook_promotion = possible_move.promote_to(WHITE_ROOK);
+        v.push(rook_promotion);
+        let bishop_promotion = possible_move.promote_to(WHITE_BISHOP);
+        v.push(bishop_promotion);
+        let knight_promotion = possible_move.promote_to(WHITE_KNIGHT);
+        v.push(knight_promotion);
+        return true;
+    }
+    false
+}
+
 fn try_move(dest_row_idx: i8, dest_col_idx: i8, square:u8, position: Position, piece: Piece, v: &mut Vec<Move>, allow_captures: bool, allow_non_captures: bool) -> bool {
     if dest_row_idx < (ROW_NUM as i8) && dest_col_idx < (COL_NUM as i8) && dest_row_idx >= 0 && dest_col_idx >= 0 {
         if allow_non_captures && square_free(dest_row_idx as u8, dest_col_idx as u8, position) {
             let possible_move = Move::build(piece, square, get_square_idx(dest_row_idx as u8, dest_col_idx as u8));
-            v.push(possible_move);
+            if !try_promotions(dest_row_idx, piece, v, possible_move) {
+                v.push(possible_move);
+            }
             return true;
         }
         else if allow_captures && square_occupied_not_by_color(dest_row_idx as u8, dest_col_idx as u8, position, piece.piece_color) {
             let possible_move = Move::build(piece, square, get_square_idx(dest_row_idx as u8, dest_col_idx as u8)).capture();
-            v.push(possible_move);
+            if !try_promotions(dest_row_idx, piece, v, possible_move) {
+                v.push(possible_move);
+            }
             return true;
         }
     }
@@ -232,11 +262,11 @@ pub fn legal_moves(position: Position) -> Vec<Move> {
                             }
                             if direction == 1 {
                                 try_forward_vertical_moves(row_idx, col_idx, square, position, piece, &mut v, max_len as i8, false);
-                                try_forward_diagonal_moves(row_idx, col_idx, square, position, piece, &mut v, max_len as i8, false);
+                                try_forward_diagonal_moves(row_idx, col_idx, square, position, piece, &mut v, 1, false);
                             }
                             else {
                                 try_backward_vertical_moves(row_idx, col_idx, square, position, piece, &mut v, max_len as i8, false);
-                                try_backward_diagonal_moves(row_idx, col_idx, square, position, piece, &mut v, max_len as i8, false);
+                                try_backward_diagonal_moves(row_idx, col_idx, square, position, piece, &mut v, 1, false);
                             }
                             try_en_passant(position, piece, col_idx, row_idx, square, direction, &mut v);
                         }
