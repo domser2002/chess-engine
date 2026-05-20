@@ -203,7 +203,6 @@ pub mod move_tests {
 
 pub mod position_tests {
     use crate::piece::*;
-    use crate::position;
     use crate::position::*;
     use crate::r#move::*;
     use crate::square::Squares::*;

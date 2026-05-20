@@ -1,9 +1,6 @@
-use std::default;
-
-use crate::{Piece, PieceColor, r#move::Move, piece::{self, *}, square::{self, *}};
+use crate::{Piece, PieceColor, r#move::Move, piece::*, square::*};
 use colored::*;
-use crate::print_move;
-// use crate::Move;
+
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub struct Position {
     pub pieces: [[Option<Piece>; COL_NUM as usize]; ROW_NUM as usize],
@@ -15,6 +12,17 @@ pub struct Position {
     // pub black_long_castle: bool,
     // pub black_short_castle: bool,
 }
+
+const ROOK_DIRS: [(i8, i8); 4] = [(1, 0), (-1, 0), (0, 1), (0, -1)];
+const BISHOP_DIRS: [(i8, i8); 4] = [(1, 1), (1, -1), (-1, 1), (-1, -1)];
+const KING_DIRS: [(i8, i8); 8] = [
+    (1, 0), (-1, 0), (0, 1), (0, -1),
+    (1, 1), (1, -1), (-1, 1), (-1, -1),
+];
+const KNIGHT_OFFSETS: [(i8, i8); 8] = [
+    (2, 1), (1, 2), (-2, 1), (-1, 2),
+    (2, -1), (1, -2), (-2, -1), (-1, -2),
+];
 
 pub fn start_position() -> Position {
  Position {
@@ -70,152 +78,138 @@ pub fn print_position(position: Position) {
     println!("{horizontal_line}");
 }
 
-pub fn square_free(row: u8, col: u8, position: Position) -> bool
-{
-    let maybe_piece = position.pieces[row as usize][col as usize];
-    match maybe_piece {
-        None => {return true;}
-        Some(_p) => { return false; }
+fn add_sliding_moves(
+    v: &mut Vec<Move>,
+    position: Position,
+    piece: Piece,
+    square: u8,
+    directions: &[(i8, i8)],
+    max_len: i8,
+) {
+    let (col, row) = get_col_and_row(square);
+    for (dc, dr) in directions {
+        for i in 1..=max_len {
+            let nr = row as i8 + dr * i;
+            let nc = col as i8 + dc * i;
+            if nr < 0 || nr >= ROW_NUM as i8 || nc < 0 || nc >= COL_NUM as i8 {
+                break;
+            }
+            let target = position.pieces[nr as usize][nc as usize];
+            match target {
+                None => {
+                    v.push(Move::build(piece, square, get_square_idx(nr as u8, nc as u8)));
+                }
+                Some(p) if p.piece_color != piece.piece_color => {
+                    v.push(Move::build(piece, square, get_square_idx(nr as u8, nc as u8)).capture());
+                    break;
+                }
+                _ => break, // own piece blocks
+            }
+        }
     }
 }
 
-pub fn square_occupied_not_by_color(row: u8, col: u8, position: Position, piece_color: PieceColor) -> bool
-{
-    let maybe_piece = position.pieces[row as usize][col as usize];
-    match maybe_piece {
-        None => {return false;}
-        Some(p) => { return p.piece_color != piece_color; }
+fn add_knight_moves(
+    v: &mut Vec<Move>,
+    position: Position,
+    piece: Piece,
+    square: u8,
+) {
+    let (col, row) = get_col_and_row(square);
+    for (dc, dr) in KNIGHT_OFFSETS {
+        let nr = row as i8 + dr;
+        let nc = col as i8 + dc;
+        if nr < 0 || nr >= ROW_NUM as i8 || nc < 0 || nc >= COL_NUM as i8 {
+            continue;
+        }
+        let target = position.pieces[nr as usize][nc as usize];
+        match target {
+            None => {
+                v.push(Move::build(piece, square, get_square_idx(nr as u8, nc as u8)));
+            }
+            Some(p) if p.piece_color != piece.piece_color => {
+                v.push(Move::build(piece, square, get_square_idx(nr as u8, nc as u8)).capture());
+            }
+            _ => {} // own piece blocks
+        }
     }
+}
+
+fn add_pawn_moves(
+    v: &mut Vec<Move>,
+    position: Position,
+    piece: Piece,
+    square: u8,
+) {
+    let (col, row) = get_col_and_row(square);
+    let direction: i8 = if piece.piece_color == PieceColor::White { 1 } else { -1 };
+    let max_len: i8 = if (row == 1 && direction == 1) || (row == 6 && direction == -1) { 2 } else { 1 };
+
+    // One step forward
+    let nr = row as i8 + direction;
+    if nr >= 0 && nr < ROW_NUM as i8 {
+        let target = position.pieces[nr as usize][col as usize];
+        if target.is_none() {
+            let forward_move = Move::build(piece, square, get_square_idx(nr as u8, col as u8));
+            let dest_row_idx = if direction == 1 { nr } else { nr };
+            if !try_promotions(dest_row_idx, piece, v, forward_move) {
+                v.push(forward_move);
+            }
+        }
+    }
+
+    // Double step forward from starting rank
+    if max_len == 2 {
+        let nr2 = row as i8 + 2 * direction;
+        let nr1 = row as i8 + direction;
+        let target1 = position.pieces[nr1 as usize][col as usize];
+        let target2 = position.pieces[nr2 as usize][col as usize];
+        if target1.is_none() && target2.is_none() {
+            v.push(Move::build(piece, square, get_square_idx(nr2 as u8, col as u8)));
+        }
+    }
+
+    // Captures: forward-left and forward-right
+    for dc in [-1, 1] {
+        let nc = col as i8 + dc;
+        let nr = row as i8 + direction;
+        if nr >= 0 && nr < ROW_NUM as i8 && nc >= 0 && nc < COL_NUM as i8 {
+            let target = position.pieces[nr as usize][nc as usize];
+            match target {
+                Some(p) if p.piece_color != piece.piece_color => {
+                    let capture_move = Move::build(piece, square, get_square_idx(nr as u8, nc as u8)).capture();
+                    if !try_promotions(nr, piece, v, capture_move) {
+                        v.push(capture_move);
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+
+    // En passant
+    try_en_passant(position, piece, col, row, square, direction, v);
 }
 
 fn try_promotions(dest_row_idx: i8, piece: Piece, v: &mut Vec<Move>, possible_move: Move) -> bool {
     if piece.piece_type == PieceType::Pawn && dest_row_idx == 0 {
-        let queen_promotion = possible_move.promote_to(BLACK_QUEEN);
-        v.push(queen_promotion);
-        let rook_promotion = possible_move.promote_to(BLACK_ROOK);
-        v.push(rook_promotion);
-        let bishop_promotion = possible_move.promote_to(BLACK_BISHOP);
-        v.push(bishop_promotion);
-        let knight_promotion = possible_move.promote_to(BLACK_KNIGHT);
-        v.push(knight_promotion);
+        v.push(possible_move.promote_to(BLACK_QUEEN));
+        v.push(possible_move.promote_to(BLACK_ROOK));
+        v.push(possible_move.promote_to(BLACK_BISHOP));
+        v.push(possible_move.promote_to(BLACK_KNIGHT));
         return true;
     }
     else if piece.piece_type == PieceType::Pawn && dest_row_idx == 7 {
-        let queen_promotion = possible_move.promote_to(WHITE_QUEEN);
-        v.push(queen_promotion);
-        let rook_promotion = possible_move.promote_to(WHITE_ROOK);
-        v.push(rook_promotion);
-        let bishop_promotion = possible_move.promote_to(WHITE_BISHOP);
-        v.push(bishop_promotion);
-        let knight_promotion = possible_move.promote_to(WHITE_KNIGHT);
-        v.push(knight_promotion);
+        v.push(possible_move.promote_to(WHITE_QUEEN));
+        v.push(possible_move.promote_to(WHITE_ROOK));
+        v.push(possible_move.promote_to(WHITE_BISHOP));
+        v.push(possible_move.promote_to(WHITE_KNIGHT));
         return true;
     }
     false
 }
 
-fn try_move(dest_row_idx: i8, dest_col_idx: i8, square:u8, position: Position, piece: Piece, v: &mut Vec<Move>, allow_captures: bool, allow_non_captures: bool) -> bool {
-    if dest_row_idx < (ROW_NUM as i8) && dest_col_idx < (COL_NUM as i8) && dest_row_idx >= 0 && dest_col_idx >= 0 {
-        if allow_non_captures && square_free(dest_row_idx as u8, dest_col_idx as u8, position) {
-            let possible_move = Move::build(piece, square, get_square_idx(dest_row_idx as u8, dest_col_idx as u8));
-            if !try_promotions(dest_row_idx, piece, v, possible_move) {
-                v.push(possible_move);
-            }
-            return true;
-        }
-        else if allow_captures && square_occupied_not_by_color(dest_row_idx as u8, dest_col_idx as u8, position, piece.piece_color) {
-            let possible_move = Move::build(piece, square, get_square_idx(dest_row_idx as u8, dest_col_idx as u8)).capture();
-            if !try_promotions(dest_row_idx, piece, v, possible_move) {
-                v.push(possible_move);
-            }
-            return true;
-        }
-    }
-    false  
-}
-
-fn try_forward_vertical_moves(row_idx: u8, col_idx: u8, square:u8, position: Position, piece: Piece, v: &mut Vec<Move>, max_len: i8, allow_captures: bool) {
-    let mut success = true;
-    let mut i: i8 = 1;
-    while success && i <= max_len {
-        success = try_move((row_idx as i8) + i, col_idx as i8, square, position, piece, v, allow_captures, true);
-        i += 1;
-    }
-}
-
-fn try_backward_vertical_moves(row_idx: u8, col_idx: u8, square:u8, position: Position, piece: Piece, v: &mut Vec<Move>, max_len: i8, allow_captures: bool) {
-    let mut success = true;
-    let mut i: i8 = 1;   
-    while success && i <= max_len {
-        success = try_move((row_idx as i8) - i, col_idx as i8, square, position, piece, v, allow_captures, true);
-        i += 1;
-    }
-}
-
-fn try_vertical_moves(row_idx: u8, col_idx: u8, square:u8, position: Position, piece: Piece, v: &mut Vec<Move>, max_len: i8, allow_captures: bool) {
-    try_forward_vertical_moves(row_idx, col_idx, square, position, piece, v, max_len, allow_captures);
-    try_backward_vertical_moves(row_idx, col_idx, square, position, piece, v, max_len, allow_captures);
-}
-
-fn try_horizontal_moves(row_idx: u8, col_idx: u8, square:u8, position: Position, piece: Piece, v: &mut Vec<Move>, max_len: i8) {
-    let mut success = true;
-    let mut i: i8 = 1;
-    while success && i <= max_len {
-        success = try_move(row_idx as i8, (col_idx as i8) + i, square, position, piece, v, true, true);
-        i += 1;
-    }
-
-    success = true;
-    i = 1; 
-    while success && i <= max_len {
-        success = try_move(row_idx as i8, (col_idx as i8) - i, square, position, piece, v, true, true);
-        i += 1;
-    }
-}
-
-fn try_forward_diagonal_moves(row_idx: u8, col_idx: u8, square:u8, position: Position, piece: Piece, v: &mut Vec<Move>, max_len: i8, allow_non_captures: bool) {
-    let mut success = true;
-    let mut i: i8 = 1;
-    while success && i <= max_len {
-        success = try_move((row_idx as i8) + i, (col_idx as i8) + i, square, position, piece, v, true, allow_non_captures);
-        i += 1;
-    }
-    success = true;
-    i = 1; 
-    while success && i <= max_len {
-        success = try_move((row_idx as i8) + i, (col_idx as i8) - i, square, position, piece, v, true, allow_non_captures);
-        i += 1;
-    }
-}
-
-fn try_backward_diagonal_moves(row_idx: u8, col_idx: u8, square:u8, position: Position, piece: Piece, v: &mut Vec<Move>, max_len: i8, allow_non_captures: bool) {
-    let mut success = true;
-    let mut i: i8 = 1;
-    while success && i <= max_len {
-        success = try_move((row_idx as i8) - i, (col_idx as i8) + i, square, position, piece, v, true, allow_non_captures);
-        i += 1;
-    }
-
-    success = true;
-    i = 1; 
-    while success && i <= max_len {
-        success = try_move((row_idx as i8) - i, (col_idx as i8) - i, square, position, piece, v, true, allow_non_captures);
-        i += 1;
-    }
-}
-
-fn try_diagonal_moves(row_idx: u8, col_idx: u8, square:u8, position: Position, piece: Piece, v: &mut Vec<Move>, max_len: i8) {
-    try_forward_diagonal_moves(row_idx, col_idx, square, position, piece, v, max_len, true);
-    try_backward_diagonal_moves(row_idx, col_idx, square, position, piece, v, max_len, true);
-}
-
-fn try_straight_moves(row_idx: u8, col_idx: u8, square:u8, position: Position, piece: Piece, v: &mut Vec<Move>, max_len: i8) {
-    try_vertical_moves(row_idx, col_idx, square, position, piece, v, max_len, true);
-    try_horizontal_moves(row_idx, col_idx, square, position, piece, v, max_len);
-}
-
 fn try_en_passant(position: Position, piece: Piece, col_idx: u8, row_idx: u8, square: u8, direction: i8, v: &mut Vec<Move>) {
-    // en passant
     match position.last_move {
         None => {}
         Some(last_move) => {
@@ -225,11 +219,11 @@ fn try_en_passant(position: Position, piece: Piece, col_idx: u8, row_idx: u8, sq
                 let (_, last_from_row_idx) = get_col_and_row(last_move.from);
                 let diff = last_row_idx as i8 - last_from_row_idx as i8;
                 if diff == 2 || diff == -2 {
-                    let mut diff = col_idx as i8 - last_col_idx as i8;
-                        if diff == -1 {
-                        diff = 1;
+                    let mut diff_col = col_idx as i8 - last_col_idx as i8;
+                        if diff_col == -1 {
+                        diff_col = 1;
                         }
-                    if last_row_idx == row_idx && diff == 1 {
+                    if last_row_idx == row_idx && diff_col == 1 {
                         let possible_move = Move::build(piece, square, get_square_idx(((last_row_idx as i8) + direction) as u8, last_col_idx)).capture();
                         v.push(possible_move);
                     }
@@ -243,60 +237,23 @@ fn try_en_passant(position: Position, piece: Piece, col_idx: u8, row_idx: u8, sq
 
 pub fn legal_moves(position: Position) -> Vec<Move> {
     let mut v = Vec::new();
-    for square in 1..=(ROW_NUM * COL_NUM) {
-        let (col_idx, row_idx) = get_col_and_row(square);
+    for square_num in 1..=(ROW_NUM * COL_NUM) {
+        let (col_idx, row_idx) = get_col_and_row(square_num);
         let maybe_piece = position.pieces[row_idx as usize][col_idx as usize];
-        match maybe_piece {
-            None => {}
-            Some(piece) => {
-                if position.turn == piece.piece_color {
-                    match piece.piece_type {
-                        PieceType::Pawn => {
-                            let mut direction: i8 = 1;
-                            let mut max_len: u8 = 1;
-                            if piece.piece_color == PieceColor::Black {
-                                direction = -1;
-                            }
-                            if (row_idx == 1 && direction == 1) || (row_idx == 6 && direction == -1) {
-                                max_len = 2;
-                            }
-                            if direction == 1 {
-                                try_forward_vertical_moves(row_idx, col_idx, square, position, piece, &mut v, max_len as i8, false);
-                                try_forward_diagonal_moves(row_idx, col_idx, square, position, piece, &mut v, 1, false);
-                            }
-                            else {
-                                try_backward_vertical_moves(row_idx, col_idx, square, position, piece, &mut v, max_len as i8, false);
-                                try_backward_diagonal_moves(row_idx, col_idx, square, position, piece, &mut v, 1, false);
-                            }
-                            try_en_passant(position, piece, col_idx, row_idx, square, direction, &mut v);
-                        }
-                        PieceType::Knight => {
-                            try_move((row_idx as i8) + 2, (col_idx as i8) + 1, square, position, piece, &mut v, true, true);
-                            try_move((row_idx as i8) + 1, (col_idx as i8) + 2, square, position, piece, &mut v, true,  true);
-                            try_move((row_idx as i8) - 2, (col_idx as i8) + 1, square, position, piece, &mut v, true,  true);
-                            try_move((row_idx as i8) - 1, (col_idx as i8) + 2, square, position, piece, &mut v, true, true);
-                            try_move((row_idx as i8) + 2, (col_idx as i8) - 1, square, position, piece, &mut v, true, true);
-                            try_move((row_idx as i8) + 1, (col_idx as i8) - 2, square, position, piece, &mut v, true, true);
-                            try_move((row_idx as i8) - 2, (col_idx as i8) - 1, square, position, piece, &mut v, true, true);
-                            try_move((row_idx as i8) - 1, (col_idx as i8) - 2, square, position, piece, &mut v, true, true);
-                        }
-                        PieceType::Bishop => {
-                            try_diagonal_moves(row_idx, col_idx, square, position, piece, &mut v, 8);
-                        }
-                        PieceType::Rook => {
-                            try_straight_moves(row_idx, col_idx, square, position, piece, &mut v, 8);
-                        }
-                        PieceType::Queen => {
-                            try_diagonal_moves(row_idx, col_idx, square, position, piece, &mut v, 8);
-                            try_straight_moves(row_idx, col_idx, square, position, piece, &mut v, 8);
-                        }
-                        PieceType::King => {
-                            try_diagonal_moves(row_idx, col_idx, square, position, piece, &mut v, 1);
-                            try_straight_moves(row_idx, col_idx, square, position, piece, &mut v, 1);
-                        }
-                    }
-                }
+        let Some(piece) = maybe_piece else { continue; };
+        if position.turn != piece.piece_color {
+            continue;
+        }
+        match piece.piece_type {
+            PieceType::Pawn => add_pawn_moves(&mut v, position, piece, square_num),
+            PieceType::Knight => add_knight_moves(&mut v, position, piece, square_num),
+            PieceType::Bishop => add_sliding_moves(&mut v, position, piece, square_num, &BISHOP_DIRS, 8),
+            PieceType::Rook => add_sliding_moves(&mut v, position, piece, square_num, &ROOK_DIRS, 8),
+            PieceType::Queen => {
+                add_sliding_moves(&mut v, position, piece, square_num, &ROOK_DIRS, 8);
+                add_sliding_moves(&mut v, position, piece, square_num, &BISHOP_DIRS, 8);
             }
+            PieceType::King => add_sliding_moves(&mut v, position, piece, square_num, &KING_DIRS, 1),
         }
     }
     v

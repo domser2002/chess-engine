@@ -9,10 +9,8 @@ mod r#move;
 mod position;
 mod piece;
 mod square;
-mod board;
 #[cfg(test)]
 mod public_test;
-use rand::seq::SliceRandom;
 
 fn main()
 {
