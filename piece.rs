@@ -20,62 +20,62 @@ pub struct Piece {
     pub piece_color: PieceColor
 }
 
-pub static WHITE_PAWN: Piece = Piece {
+pub const WHITE_PAWN: Piece = Piece {
     piece_color: PieceColor::White,
     piece_type: PieceType::Pawn
 };
 
-pub static WHITE_KNIGHT: Piece = Piece {
+pub const WHITE_KNIGHT: Piece = Piece {
     piece_color: PieceColor::White,
     piece_type: PieceType::Knight
 };
 
-pub static WHITE_BISHOP: Piece = Piece {
+pub const WHITE_BISHOP: Piece = Piece {
     piece_color: PieceColor::White,
     piece_type: PieceType::Bishop
 };
 
-pub static WHITE_ROOK: Piece = Piece {
+pub const WHITE_ROOK: Piece = Piece {
     piece_color: PieceColor::White,
     piece_type: PieceType::Rook
 };
 
-pub static WHITE_QUEEN: Piece = Piece {
+pub const WHITE_QUEEN: Piece = Piece {
     piece_color: PieceColor::White,
     piece_type: PieceType::Queen
 };
 
-pub static WHITE_KING: Piece = Piece {
+pub const WHITE_KING: Piece = Piece {
     piece_color: PieceColor::White,
     piece_type: PieceType::King
 };
 
-pub static BLACK_PAWN: Piece = Piece {
+pub const BLACK_PAWN: Piece = Piece {
     piece_color: PieceColor::Black,
     piece_type: PieceType::Pawn
 };
 
-pub static BLACK_KNIGHT: Piece = Piece {
+pub const BLACK_KNIGHT: Piece = Piece {
     piece_color: PieceColor::Black,
     piece_type: PieceType::Knight
 };
 
-pub static BLACK_BISHOP: Piece = Piece {
+pub const BLACK_BISHOP: Piece = Piece {
     piece_color: PieceColor::Black,
     piece_type: PieceType::Bishop
 };
 
-pub static BLACK_ROOK: Piece = Piece {
+pub const BLACK_ROOK: Piece = Piece {
     piece_color: PieceColor::Black,
     piece_type: PieceType::Rook
 };
 
-pub static BLACK_QUEEN: Piece = Piece {
+pub const BLACK_QUEEN: Piece = Piece {
     piece_color: PieceColor::Black,
     piece_type: PieceType::Queen
 };
 
-pub static BLACK_KING: Piece = Piece {
+pub const BLACK_KING: Piece = Piece {
     piece_color: PieceColor::Black,
     piece_type: PieceType::King
 };

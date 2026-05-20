@@ -1,8 +1,8 @@
 use crate::Piece;
 use crate::piece::{BLACK_KING, PieceColor, PieceType, WHITE_KING, get_char};
 use crate::square::get_square_name;
-pub static SHORT_CASTLING_SQUARE: u8 = 65;
-pub static LONG_CASTLING_SQUARE: u8 = 66;
+pub const SHORT_CASTLING_SQUARE: u8 = 65;
+pub const LONG_CASTLING_SQUARE: u8 = 66;
 
 #[derive(Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Debug)]
 pub struct Move {

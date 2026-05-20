@@ -1,5 +1,5 @@
-pub static ROW_NUM: u8 = 8;
-pub static COL_NUM: u8 = 8;
+pub const ROW_NUM: u8 = 8;
+pub const COL_NUM: u8 = 8;
 use num_enum::TryFromPrimitive;
 use strum_macros::Display;
 
