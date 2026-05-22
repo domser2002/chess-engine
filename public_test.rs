@@ -308,6 +308,80 @@ pub mod position_tests {
         assert_eq!(pos.turn, PieceColor::Black);
     }
 
+    #[test]
+    fn is_in_check_start_position() {
+        let pos = start_position();
+        assert!(!is_in_check(pos, PieceColor::White));
+        assert!(!is_in_check(pos, PieceColor::Black));
+    }
+
+    #[test]
+    fn is_in_check_by_bishop() {
+        let mut pos = empty_position(PieceColor::White);
+        let (e1_col, e1_row) = get_col_and_row(E1 as u8);
+        let (e8_col, e8_row) = get_col_and_row(E8 as u8);
+        let (h4_col, h4_row) = get_col_and_row(H4 as u8);
+        pos.pieces[e1_row as usize][e1_col as usize] = Some(WHITE_KING);
+        pos.pieces[e8_row as usize][e8_col as usize] = Some(BLACK_KING);
+        pos.pieces[h4_row as usize][h4_col as usize] = Some(BLACK_BISHOP);
+        assert!(is_in_check(pos, PieceColor::White));
+        assert!(!is_in_check(pos, PieceColor::Black));
+    }
+
+    #[test]
+    fn is_in_check_by_rook() {
+        let mut pos = empty_position(PieceColor::White);
+        let (e1_col, e1_row) = get_col_and_row(E1 as u8);
+        let (e8_col, e8_row) = get_col_and_row(E8 as u8);
+        let (e4_col, e4_row) = get_col_and_row(E4 as u8);
+        pos.pieces[e1_row as usize][e1_col as usize] = Some(WHITE_KING);
+        pos.pieces[e8_row as usize][e8_col as usize] = Some(BLACK_KING);
+        // Rook on same file (e4) attacks king on e1
+        pos.pieces[e4_row as usize][e4_col as usize] = Some(BLACK_ROOK);
+        assert!(is_in_check(pos, PieceColor::White));
+    }
+
+    #[test]
+    fn is_in_check_by_knight() {
+        let mut pos = empty_position(PieceColor::White);
+        let (e1_col, e1_row) = get_col_and_row(E1 as u8);
+        let (e8_col, e8_row) = get_col_and_row(E8 as u8);
+        let (f3_col, f3_row) = get_col_and_row(F3 as u8);
+        pos.pieces[e1_row as usize][e1_col as usize] = Some(WHITE_KING);
+        pos.pieces[e8_row as usize][e8_col as usize] = Some(BLACK_KING);
+        pos.pieces[f3_row as usize][f3_col as usize] = Some(BLACK_KNIGHT);
+        assert!(is_in_check(pos, PieceColor::White));
+    }
+
+    #[test]
+    fn is_in_check_by_pawn() {
+        let mut pos = empty_position(PieceColor::White);
+        let (e1_col, e1_row) = get_col_and_row(E1 as u8);
+        let (e8_col, e8_row) = get_col_and_row(E8 as u8);
+        let (d2_col, d2_row) = get_col_and_row(D2 as u8);
+        pos.pieces[e1_row as usize][e1_col as usize] = Some(WHITE_KING);
+        pos.pieces[e8_row as usize][e8_col as usize] = Some(BLACK_KING);
+        // Black pawn attacks diagonally upward (toward higher row index)
+        pos.pieces[d2_row as usize][d2_col as usize] = Some(BLACK_PAWN);
+        assert!(is_in_check(pos, PieceColor::White));
+    }
+
+    #[test]
+    fn is_in_check_blocked_by_friendly_piece() {
+        let mut pos = empty_position(PieceColor::White);
+        let (e1_col, e1_row) = get_col_and_row(E1 as u8);
+        let (e8_col, e8_row) = get_col_and_row(E8 as u8);
+        let (e4_col, e4_row) = get_col_and_row(E4 as u8);
+        let (e3_col, e3_row) = get_col_and_row(E3 as u8);
+        pos.pieces[e1_row as usize][e1_col as usize] = Some(WHITE_KING);
+        pos.pieces[e8_row as usize][e8_col as usize] = Some(BLACK_KING);
+        // Rook on e4 would attack king on e1...
+        pos.pieces[e4_row as usize][e4_col as usize] = Some(BLACK_ROOK);
+        // ...but white pawn on e3 blocks the line
+        pos.pieces[e3_row as usize][e3_col as usize] = Some(WHITE_PAWN);
+        assert!(!is_in_check(pos, PieceColor::White));
+    }
+
     fn start_position_expected_legal_moves() -> Vec<Move> {
         vec![
         Move::build(WHITE_PAWN, A2 as u8, A3 as u8),

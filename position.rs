@@ -243,7 +243,120 @@ fn try_en_passant(position: Position, piece: Piece, col_idx: u8, row_idx: u8, sq
     }
 }
 
-pub fn legal_moves(position: Position) -> Vec<Move> {
+/// Check if the king of the given color is in check.
+/// Scans outward from the king's position looking for enemy attackers.
+pub fn is_in_check(position: Position, color: PieceColor) -> bool {
+    // Find the king
+    let mut king_square: Option<u8> = None;
+    for square_num in 1..=(ROW_NUM * COL_NUM) {
+        let (col_idx, row_idx) = get_col_and_row(square_num);
+        if let Some(piece) = position.pieces[row_idx as usize][col_idx as usize] {
+            if piece.piece_type == PieceType::King && piece.piece_color == color {
+                king_square = Some(square_num);
+                break;
+            }
+        }
+    }
+    let king_square = match king_square {
+        Some(sq) => sq,
+        None => return false, // no king found
+    };
+
+    let (king_col, king_row) = get_col_and_row(king_square);
+    let enemy = if color == PieceColor::White { PieceColor::Black } else { PieceColor::White };
+
+    // Check knight attacks
+    for (dc, dr) in KNIGHT_OFFSETS {
+        let nr = king_row as i8 + dr;
+        let nc = king_col as i8 + dc;
+        if nr < 0 || nr >= ROW_NUM as i8 || nc < 0 || nc >= COL_NUM as i8 {
+            continue;
+        }
+        if let Some(piece) = position.pieces[nr as usize][nc as usize] {
+            if piece.piece_color == enemy && piece.piece_type == PieceType::Knight {
+                return true;
+            }
+        }
+    }
+
+    // Check king attacks (enemy king adjacent)
+    for (dc, dr) in KING_DIRS {
+        let nr = king_row as i8 + dr;
+        let nc = king_col as i8 + dc;
+        if nr < 0 || nr >= ROW_NUM as i8 || nc < 0 || nc >= COL_NUM as i8 {
+            continue;
+        }
+        if let Some(piece) = position.pieces[nr as usize][nc as usize] {
+            if piece.piece_color == enemy && piece.piece_type == PieceType::King {
+                return true;
+            }
+        }
+    }
+
+    // Check pawn attacks
+    // Enemy pawns attack from one row toward the king (below for white king, above for black king)
+    let pawn_dir: i8 = if color == PieceColor::White { 1 } else { -1 };
+    for dc in [-1, 1] {
+        let nr = king_row as i8 + pawn_dir;
+        let nc = king_col as i8 + dc;
+        if nr < 0 || nr >= ROW_NUM as i8 || nc < 0 || nc >= COL_NUM as i8 {
+            continue;
+        }
+        if let Some(piece) = position.pieces[nr as usize][nc as usize] {
+            if piece.piece_color == enemy && piece.piece_type == PieceType::Pawn {
+                return true;
+            }
+        }
+    }
+
+    // Check sliding attacks (rooks, bishops, queens)
+    // Rook directions (orthogonal)
+    for (dc, dr) in ROOK_DIRS {
+        let mut i: i8 = 1;
+        loop {
+            let nr = king_row as i8 + dr * i;
+            let nc = king_col as i8 + dc * i;
+            if nr < 0 || nr >= ROW_NUM as i8 || nc < 0 || nc >= COL_NUM as i8 {
+                break;
+            }
+            if let Some(piece) = position.pieces[nr as usize][nc as usize] {
+                if piece.piece_color == enemy
+                    && (piece.piece_type == PieceType::Rook || piece.piece_type == PieceType::Queen)
+                {
+                    return true;
+                }
+                break; // blocked by any piece (friend or foe that isn't a slider)
+            }
+            i += 1;
+        }
+    }
+
+    // Bishop directions (diagonal)
+    for (dc, dr) in BISHOP_DIRS {
+        let mut i: i8 = 1;
+        loop {
+            let nr = king_row as i8 + dr * i;
+            let nc = king_col as i8 + dc * i;
+            if nr < 0 || nr >= ROW_NUM as i8 || nc < 0 || nc >= COL_NUM as i8 {
+                break;
+            }
+            if let Some(piece) = position.pieces[nr as usize][nc as usize] {
+                if piece.piece_color == enemy
+                    && (piece.piece_type == PieceType::Bishop || piece.piece_type == PieceType::Queen)
+                {
+                    return true;
+                }
+                break;
+            }
+            i += 1;
+        }
+    }
+
+    false
+}
+
+/// Generate pseudo-legal moves (moves that don't account for leaving own king in check).
+pub fn pseudo_legal_moves(position: Position) -> Vec<Move> {
     let mut v = Vec::new();
     for square_num in 1..=(ROW_NUM * COL_NUM) {
         let (col_idx, row_idx) = get_col_and_row(square_num);
@@ -265,6 +378,19 @@ pub fn legal_moves(position: Position) -> Vec<Move> {
         }
     }
     v
+}
+
+/// Generate legal moves (pseudo-legal moves filtered by "doesn't leave king in check").
+pub fn legal_moves(position: Position) -> Vec<Move> {
+    let candidates = pseudo_legal_moves(position);
+    candidates
+        .into_iter()
+        .filter(|&m| {
+            let mut pos = position;
+            make_move(&mut pos, m);
+            !is_in_check(pos, position.turn)
+        })
+        .collect()
 }
 
 // TODO:
