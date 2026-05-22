@@ -264,6 +264,50 @@ pub mod position_tests {
         make_move(&mut position, ef5);
     }
 
+    #[test]
+    fn make_move_promotion() {
+        let mut pos = empty_position(PieceColor::White);
+        let (a1_col, a1_row) = get_col_and_row(A1 as u8);
+        let (a8_col, a8_row) = get_col_and_row(A8 as u8);
+        let (f7_col, f7_row) = get_col_and_row(F7 as u8);
+        let (f8_col, f8_row) = get_col_and_row(F8 as u8);
+
+        pos.pieces[a1_row as usize][a1_col as usize] = Some(WHITE_KING);
+        pos.pieces[a8_row as usize][a8_col as usize] = Some(BLACK_KING);
+        pos.pieces[f7_row as usize][f7_col as usize] = Some(WHITE_PAWN);
+
+        let promotion = Move::build(WHITE_PAWN, F7 as u8, F8 as u8).promote_to(WHITE_QUEEN);
+        make_move(&mut pos, promotion);
+
+        assert!(pos.pieces[f7_row as usize][f7_col as usize].is_none());
+        assert_eq!(pos.pieces[f8_row as usize][f8_col as usize], Some(WHITE_QUEEN));
+        assert_eq!(pos.turn, PieceColor::Black);
+    }
+
+    #[test]
+    fn make_move_en_passant() {
+        let mut pos = empty_position(PieceColor::White);
+        let (a1_col, a1_row) = get_col_and_row(A1 as u8);
+        let (a8_col, a8_row) = get_col_and_row(A8 as u8);
+        let (e5_col, e5_row) = get_col_and_row(E5 as u8);
+        let (d5_col, d5_row) = get_col_and_row(D5 as u8);
+        let (d6_col, d6_row) = get_col_and_row(D6 as u8);
+
+        pos.pieces[a1_row as usize][a1_col as usize] = Some(WHITE_KING);
+        pos.pieces[a8_row as usize][a8_col as usize] = Some(BLACK_KING);
+        pos.pieces[e5_row as usize][e5_col as usize] = Some(WHITE_PAWN);
+        pos.pieces[d5_row as usize][d5_col as usize] = Some(BLACK_PAWN);
+        pos.last_move = Some(Move::build(BLACK_PAWN, D7 as u8, D5 as u8));
+
+        let exd6 = Move::build(WHITE_PAWN, E5 as u8, D6 as u8).capture();
+        make_move(&mut pos, exd6);
+
+        assert!(pos.pieces[e5_row as usize][e5_col as usize].is_none());
+        assert_eq!(pos.pieces[d6_row as usize][d6_col as usize], Some(WHITE_PAWN));
+        assert!(pos.pieces[d5_row as usize][d5_col as usize].is_none());
+        assert_eq!(pos.turn, PieceColor::Black);
+    }
+
     fn start_position_expected_legal_moves() -> Vec<Move> {
         vec![
         Move::build(WHITE_PAWN, A2 as u8, A3 as u8),

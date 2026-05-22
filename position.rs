@@ -24,6 +24,14 @@ const KNIGHT_OFFSETS: [(i8, i8); 8] = [
     (2, -1), (1, -2), (-2, -1), (-1, -2),
 ];
 
+pub fn empty_position(turn: PieceColor) -> Position {
+    Position {
+        pieces: [[None; COL_NUM as usize]; ROW_NUM as usize],
+        turn,
+        last_move: None,
+    }
+}
+
 pub fn start_position() -> Position {
  Position {
     pieces: [
@@ -274,12 +282,26 @@ pub fn make_move(position: &mut Position, m: Move) {
                     if dst_piece.piece_color == src_piece.piece_color {
                         panic!("Square is already occupied!");
                     }
-                    else {}
                 }
-                None => {} 
+                None => {
+                    // En passant: pawn capture to an apparently empty square
+                    if src_piece.piece_type == PieceType::Pawn && m.capture {
+                        // Remove the captured pawn (same rank as source, same file as destination)
+                        position.pieces[from_row_idx as usize][to_col_idx as usize] = None;
+                    }
+                }
             }
             position.pieces[from_row_idx as usize][from_col_idx as usize] = None;
-            position.pieces[to_row_idx as usize][to_col_idx as usize] = Some(src_piece);
+
+            // Handle promotion: place the promoted piece instead of the pawn
+            match m.new_piece {
+                Some(promoted) => {
+                    position.pieces[to_row_idx as usize][to_col_idx as usize] = Some(promoted);
+                }
+                None => {
+                    position.pieces[to_row_idx as usize][to_col_idx as usize] = Some(src_piece);
+                }
+            }
         }
         None => {
             panic!("No piece on source square!");
