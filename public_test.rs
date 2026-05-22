@@ -114,6 +114,8 @@ pub mod move_tests {
     use crate::r#move::*;
     use crate::piece::*;
     use crate::square::Squares::*;
+    use crate::square::get_col_and_row;
+    use crate::position::{self, *};
 
     #[test]
     fn rook_move_simple_square() {
@@ -199,6 +201,169 @@ pub mod move_tests {
         let s = print_move(m);
         assert_eq!(s, "0-0-0");
     }    
+
+    #[test]
+    fn parse_uci_basic_move() {
+        let pos = start_position();
+        let m = parse_move_uci("e2e4", &pos).unwrap();
+        assert_eq!(m.piece, WHITE_PAWN);
+        assert!(!m.capture);
+        assert_eq!(m.from, E2 as u8);
+        assert_eq!(m.to, E4 as u8);
+        assert_eq!(m.new_piece, None);
+    }
+
+    #[test]
+    fn parse_uci_knight_move() {
+        let pos = start_position();
+        let m = parse_move_uci("g1f3", &pos).unwrap();
+        assert_eq!(m.piece, WHITE_KNIGHT);
+        assert!(!m.capture);
+        assert_eq!(m.from, G1 as u8);
+        assert_eq!(m.to, F3 as u8);
+        assert_eq!(m.new_piece, None);
+    }
+
+    #[test]
+    fn parse_uci_capture() {
+        let mut pos = start_position();
+        // Move pawns to set up capture
+        make_move(&mut pos, Move::build(WHITE_PAWN, D2 as u8, D4 as u8));
+        make_move(&mut pos, Move::build(BLACK_PAWN, E7 as u8, E5 as u8));
+        let m = parse_move_uci("d4e5", &pos).unwrap();
+        assert_eq!(m.piece, WHITE_PAWN);
+        assert!(m.capture);
+        assert_eq!(m.from, D4 as u8);
+        assert_eq!(m.to, E5 as u8);
+        assert_eq!(m.new_piece, None);
+    }
+
+    #[test]
+    fn parse_uci_promotion() {
+        let mut pos = empty_position(PieceColor::White);
+        let (a1_col, a1_row) = get_col_and_row(A1 as u8);
+        let (a8_col, a8_row) = get_col_and_row(A8 as u8);
+        let (f7_col, f7_row) = get_col_and_row(F7 as u8);
+        pos.pieces[a1_row as usize][a1_col as usize] = Some(WHITE_KING);
+        pos.pieces[a8_row as usize][a8_col as usize] = Some(BLACK_KING);
+        pos.pieces[f7_row as usize][f7_col as usize] = Some(WHITE_PAWN);
+
+        let m = parse_move_uci("f7f8q", &pos).unwrap();
+        assert_eq!(m.piece, WHITE_PAWN);
+        assert!(!m.capture);
+        assert_eq!(m.from, F7 as u8);
+        assert_eq!(m.to, F8 as u8);
+        assert_eq!(m.new_piece, Some(WHITE_QUEEN));
+    }
+
+    #[test]
+    fn parse_uci_en_passant() {
+        let mut pos = empty_position(PieceColor::White);
+        let (a1_col, a1_row) = get_col_and_row(A1 as u8);
+        let (a8_col, a8_row) = get_col_and_row(A8 as u8);
+        let (e5_col, e5_row) = get_col_and_row(E5 as u8);
+        let (d5_col, d5_row) = get_col_and_row(D5 as u8);
+        pos.pieces[a1_row as usize][a1_col as usize] = Some(WHITE_KING);
+        pos.pieces[a8_row as usize][a8_col as usize] = Some(BLACK_KING);
+        pos.pieces[e5_row as usize][e5_col as usize] = Some(WHITE_PAWN);
+        pos.pieces[d5_row as usize][d5_col as usize] = Some(BLACK_PAWN);
+        pos.last_move = Some(Move::build(BLACK_PAWN, D7 as u8, D5 as u8));
+
+        let m = parse_move_uci("e5d6", &pos).unwrap();
+        assert_eq!(m.piece, WHITE_PAWN);
+        assert!(m.capture);
+        assert_eq!(m.from, E5 as u8);
+        assert_eq!(m.to, D6 as u8);
+        assert_eq!(m.new_piece, None);
+    }
+
+    #[test]
+    fn parse_uci_invalid_square() {
+        let pos = start_position();
+        assert!(parse_move_uci("e2e9", &pos).is_none());
+    }
+
+    #[test]
+    fn parse_uci_no_piece() {
+        let pos = start_position();
+        assert!(parse_move_uci("e4e5", &pos).is_none());
+    }
+
+    #[test]
+    fn parse_uci_wrong_turn() {
+        // White's turn, try to move a black piece
+        let pos = start_position();
+        assert!(parse_move_uci("e7e5", &pos).is_none());
+    }
+
+    #[test]
+    fn parse_algebraic_basic() {
+        let pos = start_position();
+        let m = parse_move_algebraic("e4", &pos).unwrap();
+        assert_eq!(m.piece, WHITE_PAWN);
+        assert!(!m.capture);
+        assert_eq!(m.from, E2 as u8);
+        assert_eq!(m.to, E4 as u8);
+        assert_eq!(m.new_piece, None);
+    }
+
+    #[test]
+    fn parse_algebraic_knight() {
+        let pos = start_position();
+        let m = parse_move_algebraic("Nf3", &pos).unwrap();
+        assert_eq!(m.piece, WHITE_KNIGHT);
+        assert!(!m.capture);
+        assert_eq!(m.from, G1 as u8);
+        assert_eq!(m.to, F3 as u8);
+        assert_eq!(m.new_piece, None);
+    }
+
+    #[test]
+    fn parse_algebraic_pawn_capture() {
+        let mut pos = start_position();
+        make_move(&mut pos, Move::build(WHITE_PAWN, E2 as u8, E4 as u8));
+        make_move(&mut pos, Move::build(BLACK_PAWN, D7 as u8, D5 as u8));
+        let m = parse_move_algebraic("ed5", &pos).unwrap();
+        assert_eq!(m.piece, WHITE_PAWN);
+        assert!(m.capture);
+        assert_eq!(m.from, E4 as u8);
+        assert_eq!(m.to, D5 as u8);
+        assert_eq!(m.new_piece, None);
+    }
+
+    #[test]
+    fn parse_algebraic_promotion() {
+        let mut pos = empty_position(PieceColor::White);
+        let (a1_col, a1_row) = get_col_and_row(A1 as u8);
+        let (a8_col, a8_row) = get_col_and_row(A8 as u8);
+        let (f7_col, f7_row) = get_col_and_row(F7 as u8);
+        pos.pieces[a1_row as usize][a1_col as usize] = Some(WHITE_KING);
+        pos.pieces[a8_row as usize][a8_col as usize] = Some(BLACK_KING);
+        pos.pieces[f7_row as usize][f7_col as usize] = Some(WHITE_PAWN);
+
+        let m = parse_move_algebraic("f8=Q", &pos).unwrap();
+        assert_eq!(m.piece, WHITE_PAWN);
+        assert!(!m.capture);
+        assert_eq!(m.from, F7 as u8);
+        assert_eq!(m.to, F8 as u8);
+        assert_eq!(m.new_piece, Some(WHITE_QUEEN));
+    }
+
+    #[test]
+    fn parse_algebraic_short_castling() {
+        let pos = start_position();
+        let m = parse_move_algebraic("0-0", &pos).unwrap();
+        assert_eq!(m.from, SHORT_CASTLING_SQUARE);
+        assert_eq!(m.to, SHORT_CASTLING_SQUARE);
+    }
+
+    #[test]
+    fn parse_algebraic_long_castling() {
+        let pos = start_position();
+        let m = parse_move_algebraic("0-0-0", &pos).unwrap();
+        assert_eq!(m.from, LONG_CASTLING_SQUARE);
+        assert_eq!(m.to, LONG_CASTLING_SQUARE);
+    }
 }
 
 pub mod position_tests {

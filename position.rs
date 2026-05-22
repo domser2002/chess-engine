@@ -1,4 +1,6 @@
-use crate::{Piece, PieceColor, r#move::Move, piece::*, square::*};
+use crate::piece::*;
+use crate::r#move::Move;
+use crate::square::*;
 use colored::*;
 
 #[derive(Copy, Clone, PartialEq, Debug)]
