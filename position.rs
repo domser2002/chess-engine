@@ -47,7 +47,7 @@ pub fn start_position() -> Position {
     }
 }
 
-fn print_wrapper(c: char, pc: PieceColor) {
+fn print_colored(c: char, pc: PieceColor) {
     let text = c.to_string();
     let colored = match pc {
         PieceColor::Black => text.black(),
@@ -59,33 +59,27 @@ fn print_wrapper(c: char, pc: PieceColor) {
 
 // this will not be unit tested as it is only for UI purpose
 pub fn print_position(position: Position) {
-    let horizontal_line: String = std::iter::repeat('-').take(16).collect();
-    let vertical_line: String = "|".to_string();
+    let horizontal_line: String = std::iter::repeat('-').take(17).collect();
     for row_idx in (0..ROW_NUM).rev() {
-        println!("{horizontal_line}");
+        println!("  {horizontal_line}");
+        print!("{} |", row_idx + 1);
         for col_idx in 0..COL_NUM {
-            print!("{vertical_line}");
             let maybe_piece: Option<Piece> = position.pieces[row_idx as usize][col_idx as usize];
             match maybe_piece {
                 Some(piece) => {
-                    let piece_char = get_char(piece);
-                    match piece_char {
-                        Some(c) => {
-                            print_wrapper(c, piece.piece_color);
-                        }
-                        None => {
-                            print_wrapper('p', piece.piece_color);
-                        }
-                    }
+                    let c = get_unicode_char(piece);
+                    print_colored(c, piece.piece_color);
                 }
                 None => {
                     print!(" ");
                 }
             }
+            print!("|");
         }
-        println!("{vertical_line}");
+        println!(" {}", row_idx + 1);
     }
-    println!("{horizontal_line}");
+    println!("  {horizontal_line}");
+    println!("   a b c d e f g h");
 }
 
 fn add_sliding_moves(
