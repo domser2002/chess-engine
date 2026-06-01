@@ -11,6 +11,7 @@ strum = "0.28"
 strum_macros = "0.28"
 rand = "0.8.5"
 pretty_assertions = "1.4.0"
+atty = "0.2.14"
 
 [dev-dependencies]
 ntest = "0.9"
