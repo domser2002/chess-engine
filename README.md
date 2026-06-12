@@ -9,16 +9,15 @@ Functional but plays random legal moves. No search or evaluation yet.
 ### What works
 - ✅ Legal move generation for all piece types
 - ✅ True legality filtering (king safety check)
-- ✅ `make_move` with promotions, en passant, captures
+- ✅ `make_move` with promotions, en passant, captures and castling
 - ✅ Check detection
 - ✅ Board display with Unicode chess symbols (♔♕♖♗♘♙ / ♚♛♜♝♞♟)
 - ✅ Move notation: algebraic (`e4`, `Nf3`, `exd5`) and UCI (`e2e4`, `g1f3`)
 - ✅ UCI protocol compatible — load in Arena, CuteChess, etc.
 - ✅ Interactive terminal mode
-- ✅ 58 unit tests covering all functionality
+- ✅ 65 unit tests covering all functionality
 
 ### What's next
-- Castling logic
 - Search (minimax / alpha-beta)
 - Evaluation function
 - FEN parsing
@@ -65,4 +64,4 @@ Or load the binary at `target/release/chess-engine` in any UCI-compatible GUI.
 cargo test
 ```
 
-All 58 tests should pass.
+All 65 tests should pass.
