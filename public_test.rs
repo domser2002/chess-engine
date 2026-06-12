@@ -547,6 +547,100 @@ pub mod position_tests {
         assert!(!is_in_check(pos, PieceColor::White));
     }
 
+        #[test]
+    fn start_position_has_castling_rights() {
+        let pos = start_position();
+        assert!(pos.white_short_castle);
+        assert!(pos.white_long_castle);
+        assert!(pos.black_short_castle);
+        assert!(pos.black_long_castle);
+    }
+
+    #[test]
+    fn castling_not_possible_with_pieces_in_way() {
+        let pos = start_position();
+        let moves = legal_moves(pos);
+        // No castling possible in start position because knights and bishops block
+        assert!(!moves.iter().any(|m| m.from == SHORT_CASTLING_SQUARE));
+        assert!(!moves.iter().any(|m| m.from == LONG_CASTLING_SQUARE));
+    }
+
+    #[test]
+    fn short_castling_works_after_clear() {
+        let mut pos = start_position();
+        // Clear path for short castle: move g1 knight, f1 bishop, e2 pawn
+        make_move(&mut pos, Move::build(WHITE_PAWN, E2 as u8, E4 as u8));
+        make_move(&mut pos, Move::build(BLACK_PAWN, A7 as u8, A6 as u8));
+        make_move(&mut pos, Move::build(WHITE_KNIGHT, G1 as u8, F3 as u8));
+        make_move(&mut pos, Move::build(BLACK_PAWN, B7 as u8, B6 as u8));
+        make_move(&mut pos, Move::build(WHITE_BISHOP, F1 as u8, E2 as u8));
+        make_move(&mut pos, Move::build(BLACK_PAWN, C7 as u8, C6 as u8));
+        // Now white can castle short
+        let moves = legal_moves(pos);
+        assert!(moves.iter().any(|m| m.from == SHORT_CASTLING_SQUARE));
+    }
+
+    #[test]
+    fn long_castling_works_after_clear() {
+        let mut pos = start_position();
+        // Clear path for long castle: move b1 knight, c1 bishop, d1 queen, d2 pawn, c2 pawn, b2 pawn
+        make_move(&mut pos, Move::build(WHITE_PAWN, D2 as u8, D4 as u8));
+        make_move(&mut pos, Move::build(BLACK_PAWN, A7 as u8, A6 as u8));
+        make_move(&mut pos, Move::build(WHITE_PAWN, C2 as u8, C3 as u8));
+        make_move(&mut pos, Move::build(BLACK_PAWN, B7 as u8, B6 as u8));
+        make_move(&mut pos, Move::build(WHITE_PAWN, B2 as u8, B3 as u8));
+        make_move(&mut pos, Move::build(BLACK_PAWN, C7 as u8, C6 as u8));
+        make_move(&mut pos, Move::build(WHITE_KNIGHT, B1 as u8, D2 as u8));
+        // Black move
+        make_move(&mut pos, Move::build(BLACK_PAWN, D7 as u8, D6 as u8));
+        make_move(&mut pos, Move::build(WHITE_BISHOP, C1 as u8, B2 as u8));
+        make_move(&mut pos, Move::build(BLACK_PAWN, E7 as u8, E6 as u8));
+        make_move(&mut pos, Move::build(WHITE_QUEEN, D1 as u8, C2 as u8));
+        make_move(&mut pos, Move::build(BLACK_PAWN, F7 as u8, F6 as u8));
+        // Now white can castle long
+        let moves = legal_moves(pos);
+        assert!(moves.iter().any(|m| m.from == LONG_CASTLING_SQUARE));
+    }
+
+    #[test]
+    fn castle_rights_lost_after_king_move() {
+        let mut pos = empty_position(PieceColor::White);
+        pos.white_short_castle = true;
+        pos.white_long_castle = true;
+        let (e1_col, e1_row) = get_col_and_row(E1 as u8);
+        pos.pieces[e1_row as usize][e1_col as usize] = Some(WHITE_KING);
+
+        make_move(&mut pos, Move::build(WHITE_KING, E1 as u8, E2 as u8));
+        assert!(!pos.white_short_castle);
+        assert!(!pos.white_long_castle);
+    }
+
+    #[test]
+    fn castle_rights_lost_after_rook_move() {
+        let mut pos = start_position();
+        // First move the knight out of g1, then move the rook
+        make_move(&mut pos, Move::build(WHITE_KNIGHT, G1 as u8, F3 as u8));
+        make_move(&mut pos, Move::build(BLACK_PAWN, A7 as u8, A6 as u8));
+        make_move(&mut pos, Move::build(WHITE_ROOK, H1 as u8, G1 as u8));
+        assert!(!pos.white_short_castle);
+        assert!(pos.white_long_castle);
+    }
+
+    #[test]
+    fn castle_rights_lost_after_rook_captured() {
+        let mut pos = empty_position(PieceColor::White);
+        let (h1_col, h1_row) = get_col_and_row(H1 as u8);
+        let (h8_col, h8_row) = get_col_and_row(H8 as u8);
+        pos.pieces[h1_row as usize][h1_col as usize] = Some(WHITE_ROOK);
+        pos.pieces[h8_row as usize][h8_col as usize] = Some(BLACK_ROOK);
+        pos.white_short_castle = true;
+
+        // Capture the black rook on h8
+        make_move(&mut pos, Move::build(WHITE_ROOK, H1 as u8, H8 as u8).capture());
+        assert!(!pos.white_short_castle);
+        assert!(!pos.black_short_castle);
+    }
+
     fn start_position_expected_legal_moves() -> Vec<Move> {
         vec![
         Move::build(WHITE_PAWN, A2 as u8, A3 as u8),

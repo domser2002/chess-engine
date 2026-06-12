@@ -1,18 +1,18 @@
 use crate::piece::*;
-use crate::r#move::Move;
-use crate::square::*;
+use crate::r#move::{Move, SHORT_CASTLING_SQUARE, LONG_CASTLING_SQUARE};
+use crate::square::{self, *};
+use crate::square::Squares::*;
 use colored::*;
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub struct Position {
     pub pieces: [[Option<Piece>; COL_NUM as usize]; ROW_NUM as usize],
     pub turn: PieceColor,
-    // for later
     pub last_move: Option<Move>,
-    // pub white_long_castle: bool,
-    // pub white_short_castle: bool,
-    // pub black_long_castle: bool,
-    // pub black_short_castle: bool,
+    pub white_short_castle: bool,
+    pub white_long_castle: bool,
+    pub black_short_castle: bool,
+    pub black_long_castle: bool,
 }
 
 const ROOK_DIRS: [(i8, i8); 4] = [(1, 0), (-1, 0), (0, 1), (0, -1)];
@@ -31,6 +31,10 @@ pub fn empty_position(turn: PieceColor) -> Position {
         pieces: [[None; COL_NUM as usize]; ROW_NUM as usize],
         turn,
         last_move: None,
+        white_short_castle: false,
+        white_long_castle: false,
+        black_short_castle: false,
+        black_long_castle: false,
     }
 }
 
@@ -44,6 +48,10 @@ pub fn start_position() -> Position {
         [Some(BLACK_ROOK) , Some(BLACK_KNIGHT), Some(BLACK_BISHOP), Some(BLACK_QUEEN), Some(BLACK_KING), Some(BLACK_BISHOP), Some(BLACK_KNIGHT), Some(BLACK_ROOK)]],
         turn: PieceColor::White,
         last_move: None,
+        white_short_castle: true,
+        white_long_castle: true,
+        black_short_castle: true,
+        black_long_castle: true,
     }
 }
 
@@ -239,37 +247,20 @@ fn try_en_passant(position: Position, piece: Piece, col_idx: u8, row_idx: u8, sq
     }
 }
 
-/// Check if the king of the given color is in check.
-/// Scans outward from the king's position looking for enemy attackers.
-pub fn is_in_check(position: Position, color: PieceColor) -> bool {
-    // Find the king
-    let mut king_square: Option<u8> = None;
-    for square_num in 1..=(ROW_NUM * COL_NUM) {
-        let (col_idx, row_idx) = get_col_and_row(square_num);
-        if let Some(piece) = position.pieces[row_idx as usize][col_idx as usize] {
-            if piece.piece_type == PieceType::King && piece.piece_color == color {
-                king_square = Some(square_num);
-                break;
-            }
-        }
-    }
-    let king_square = match king_square {
-        Some(sq) => sq,
-        None => return false, // no king found
-    };
-
-    let (king_col, king_row) = get_col_and_row(king_square);
-    let enemy = if color == PieceColor::White { PieceColor::Black } else { PieceColor::White };
+/// Check if a given square is attacked by any piece of `by_color`.
+/// Scans outward from the square using the same logic as is_in_check.
+pub fn is_square_attacked(position: Position, square: u8, by_color: PieceColor) -> bool {
+    let (target_col, target_row) = get_col_and_row(square);
 
     // Check knight attacks
     for (dc, dr) in KNIGHT_OFFSETS {
-        let nr = king_row as i8 + dr;
-        let nc = king_col as i8 + dc;
+        let nr = target_row as i8 + dr;
+        let nc = target_col as i8 + dc;
         if nr < 0 || nr >= ROW_NUM as i8 || nc < 0 || nc >= COL_NUM as i8 {
             continue;
         }
         if let Some(piece) = position.pieces[nr as usize][nc as usize] {
-            if piece.piece_color == enemy && piece.piece_type == PieceType::Knight {
+            if piece.piece_color == by_color && piece.piece_type == PieceType::Knight {
                 return true;
             }
         }
@@ -277,29 +268,30 @@ pub fn is_in_check(position: Position, color: PieceColor) -> bool {
 
     // Check king attacks (enemy king adjacent)
     for (dc, dr) in KING_DIRS {
-        let nr = king_row as i8 + dr;
-        let nc = king_col as i8 + dc;
+        let nr = target_row as i8 + dr;
+        let nc = target_col as i8 + dc;
         if nr < 0 || nr >= ROW_NUM as i8 || nc < 0 || nc >= COL_NUM as i8 {
             continue;
         }
         if let Some(piece) = position.pieces[nr as usize][nc as usize] {
-            if piece.piece_color == enemy && piece.piece_type == PieceType::King {
+            if piece.piece_color == by_color && piece.piece_type == PieceType::King {
                 return true;
             }
         }
     }
 
     // Check pawn attacks
-    // Enemy pawns attack from one row toward the king (below for white king, above for black king)
-    let pawn_dir: i8 = if color == PieceColor::White { 1 } else { -1 };
+    // White pawns move upward (row+1), so they attack from one row below (row-1)
+    // Black pawns move downward (row-1), so they attack from one row above (row+1)
+    let pawn_dir: i8 = if by_color == PieceColor::White { -1 } else { 1 };
     for dc in [-1, 1] {
-        let nr = king_row as i8 + pawn_dir;
-        let nc = king_col as i8 + dc;
+        let nr = target_row as i8 + pawn_dir;
+        let nc = target_col as i8 + dc;
         if nr < 0 || nr >= ROW_NUM as i8 || nc < 0 || nc >= COL_NUM as i8 {
             continue;
         }
         if let Some(piece) = position.pieces[nr as usize][nc as usize] {
-            if piece.piece_color == enemy && piece.piece_type == PieceType::Pawn {
+            if piece.piece_color == by_color && piece.piece_type == PieceType::Pawn {
                 return true;
             }
         }
@@ -310,18 +302,18 @@ pub fn is_in_check(position: Position, color: PieceColor) -> bool {
     for (dc, dr) in ROOK_DIRS {
         let mut i: i8 = 1;
         loop {
-            let nr = king_row as i8 + dr * i;
-            let nc = king_col as i8 + dc * i;
+            let nr = target_row as i8 + dr * i;
+            let nc = target_col as i8 + dc * i;
             if nr < 0 || nr >= ROW_NUM as i8 || nc < 0 || nc >= COL_NUM as i8 {
                 break;
             }
             if let Some(piece) = position.pieces[nr as usize][nc as usize] {
-                if piece.piece_color == enemy
+                if piece.piece_color == by_color
                     && (piece.piece_type == PieceType::Rook || piece.piece_type == PieceType::Queen)
                 {
                     return true;
                 }
-                break; // blocked by any piece (friend or foe that isn't a slider)
+                break; // blocked by any piece
             }
             i += 1;
         }
@@ -331,13 +323,13 @@ pub fn is_in_check(position: Position, color: PieceColor) -> bool {
     for (dc, dr) in BISHOP_DIRS {
         let mut i: i8 = 1;
         loop {
-            let nr = king_row as i8 + dr * i;
-            let nc = king_col as i8 + dc * i;
+            let nr = target_row as i8 + dr * i;
+            let nc = target_col as i8 + dc * i;
             if nr < 0 || nr >= ROW_NUM as i8 || nc < 0 || nc >= COL_NUM as i8 {
                 break;
             }
             if let Some(piece) = position.pieces[nr as usize][nc as usize] {
-                if piece.piece_color == enemy
+                if piece.piece_color == by_color
                     && (piece.piece_type == PieceType::Bishop || piece.piece_type == PieceType::Queen)
                 {
                     return true;
@@ -349,6 +341,66 @@ pub fn is_in_check(position: Position, color: PieceColor) -> bool {
     }
 
     false
+}
+
+/// Check if the king of the given color is in check.
+pub fn is_in_check(position: Position, color: PieceColor) -> bool {
+    // Find the king
+    for square_num in 1..=(ROW_NUM * COL_NUM) {
+        let (col_idx, row_idx) = get_col_and_row(square_num);
+        if let Some(piece) = position.pieces[row_idx as usize][col_idx as usize] {
+            if piece.piece_type == PieceType::King && piece.piece_color == color {
+                let enemy = if color == PieceColor::White { PieceColor::Black } else { PieceColor::White };
+                return is_square_attacked(position, square_num, enemy);
+            }
+        }
+    }
+    false
+}
+
+fn add_castling_moves(v: &mut Vec<Move>, position: Position, color: PieceColor) {
+    let (rights_short, rights_long) = match color {
+        PieceColor::White => (position.white_short_castle, position.white_long_castle),
+        PieceColor::Black => (position.black_short_castle, position.black_long_castle),
+    };
+    let king_square: u8 = if color == PieceColor::White { E1 as u8 } else { E8 as u8 };
+    let rank: usize = if color == PieceColor::White { 0 } else { 7 };
+    let enemy = if color == PieceColor::White { PieceColor::Black } else { PieceColor::White };
+
+    // Short castling (kingside)
+    if rights_short {
+        // Squares between king and rook must be empty: F1, G1 (or F8, G8)
+        if position.pieces[rank][5].is_none() && position.pieces[rank][6].is_none() {
+            // King must not be in check, pass through check, or end in check
+            let f_sq: u8 = if color == PieceColor::White { F1 as u8 } else { F8 as u8 };
+            let g_sq: u8 = if color == PieceColor::White { G1 as u8 } else { G8 as u8 };
+            if !is_square_attacked(position, king_square, enemy)
+                && !is_square_attacked(position, f_sq, enemy)
+                && !is_square_attacked(position, g_sq, enemy)
+            {
+                v.push(Move::build_short_castling(color));
+            }
+        }
+    }
+
+    // Long castling (queenside)
+    if rights_long {
+        // Squares between king and rook must be empty: B1, C1, D1 (or B8, C8, D8)
+        if position.pieces[rank][1].is_none()
+            && position.pieces[rank][2].is_none()
+            && position.pieces[rank][3].is_none()
+        {
+            // King must not be in check, pass through check, or end in check
+            let d_sq: u8 = if color == PieceColor::White { D1 as u8 } else { D8 as u8 };
+            let c_sq: u8 = if color == PieceColor::White { C1 as u8 } else { C8 as u8 };
+            if !is_square_attacked(position, king_square, enemy)
+                && !is_square_attacked(position, d_sq, enemy)
+                && !is_square_attacked(position, c_sq, enemy)
+            {
+                v.push(Move::build_long_castling(color));
+            }
+        }
+    }
 }
 
 /// Generate pseudo-legal moves (moves that don't account for leaving own king in check).
@@ -370,9 +422,13 @@ pub fn pseudo_legal_moves(position: Position) -> Vec<Move> {
                 add_sliding_moves(&mut v, position, piece, square_num, &ROOK_DIRS, 8);
                 add_sliding_moves(&mut v, position, piece, square_num, &BISHOP_DIRS, 8);
             }
-            PieceType::King => add_sliding_moves(&mut v, position, piece, square_num, &KING_DIRS, 1),
+            PieceType::King => {
+                add_sliding_moves(&mut v, position, piece, square_num, &KING_DIRS, 1);
+            }
         }
     }
+    // Add castling moves for the side to move
+    add_castling_moves(&mut v, position, position.turn);
     v
 }
 
@@ -393,6 +449,44 @@ pub fn legal_moves(position: Position) -> Vec<Move> {
 // 1. Check if move is legal.
 // 2. Allow special moves- castling, promotion, en passant.
 pub fn make_move(position: &mut Position, m: Move) {
+    // Handle castling moves first (they use sentinel squares, not real coordinates)
+    if m.from == SHORT_CASTLING_SQUARE || m.from == LONG_CASTLING_SQUARE {
+        let is_long = m.from == LONG_CASTLING_SQUARE;
+        let (king_rank, rook_from_col, rook_to_col) = if m.piece.piece_color == PieceColor::White {
+            if is_long { (0usize, 0usize, 3usize) } else { (0usize, 7usize, 5usize) }
+        } else {
+            if is_long { (7usize, 0usize, 3usize) } else { (7usize, 7usize, 5usize) }
+        };
+
+        // Move king (always to column 6 for short, column 2 for long)
+        let king_to_col = if is_long { 2usize } else { 6usize };
+        position.pieces[king_rank][4] = None;
+        position.pieces[king_rank][king_to_col] = Some(m.piece);
+        // Move rook
+        position.pieces[king_rank][rook_from_col] = None;
+        position.pieces[king_rank][rook_to_col] = match m.piece.piece_color {
+            PieceColor::White => Some(WHITE_ROOK),
+            PieceColor::Black => Some(BLACK_ROOK),
+        };
+
+        // Lost castle rights for this side
+        if m.piece.piece_color == PieceColor::White {
+            position.white_short_castle = false;
+            position.white_long_castle = false;
+        } else {
+            position.black_short_castle = false;
+            position.black_long_castle = false;
+        }
+
+        if position.turn == PieceColor::White {
+            position.turn = PieceColor::Black;
+        } else {
+            position.turn = PieceColor::White;
+        }
+        position.last_move = Some(m);
+        return;
+    }
+
     let (from_col_idx, from_row_idx) = get_col_and_row(m.from);
     let (to_col_idx, to_row_idx) = get_col_and_row(m.to);
     let maybe_piece_on_src: Option<Piece> = position.pieces[from_row_idx as usize][from_col_idx as usize];
@@ -404,24 +498,57 @@ pub fn make_move(position: &mut Position, m: Move) {
                     if dst_piece.piece_color == src_piece.piece_color {
                         panic!("Square is already occupied!");
                     }
+                    // If a rook is captured, lose the corresponding castle right
+                    if dst_piece.piece_type == PieceType::Rook {
+                        if to_row_idx == 0 && to_col_idx == 0 {
+                            position.white_long_castle = false;
+                        } else if to_row_idx == 0 && to_col_idx == 7 {
+                            position.white_short_castle = false;
+                        } else if to_row_idx == 7 && to_col_idx == 0 {
+                            position.black_long_castle = false;
+                        } else if to_row_idx == 7 && to_col_idx == 7 {
+                            position.black_short_castle = false;
+                        }
+                    }
                 }
                 None => {
                     // En passant: pawn capture to an apparently empty square
                     if src_piece.piece_type == PieceType::Pawn && m.capture {
-                        // Remove the captured pawn (same rank as source, same file as destination)
                         position.pieces[from_row_idx as usize][to_col_idx as usize] = None;
                     }
                 }
             }
             position.pieces[from_row_idx as usize][from_col_idx as usize] = None;
 
-            // Handle promotion: place the promoted piece instead of the pawn
+            // Handle promotion
             match m.new_piece {
                 Some(promoted) => {
                     position.pieces[to_row_idx as usize][to_col_idx as usize] = Some(promoted);
                 }
                 None => {
                     position.pieces[to_row_idx as usize][to_col_idx as usize] = Some(src_piece);
+                }
+            }
+
+            // Update castle rights when king or rook moves
+            if src_piece.piece_type == PieceType::King {
+                if src_piece.piece_color == PieceColor::White {
+                    position.white_short_castle = false;
+                    position.white_long_castle = false;
+                } else {
+                    position.black_short_castle = false;
+                    position.black_long_castle = false;
+                }
+            }
+            if src_piece.piece_type == PieceType::Rook {
+                if from_row_idx == 0 && from_col_idx == 0 {
+                    position.white_long_castle = false;
+                } else if from_row_idx == 0 && from_col_idx == 7 {
+                    position.white_short_castle = false;
+                } else if from_row_idx == 7 && from_col_idx == 0 {
+                    position.black_long_castle = false;
+                } else if from_row_idx == 7 && from_col_idx == 7 {
+                    position.black_short_castle = false;
                 }
             }
         }
