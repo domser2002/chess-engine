@@ -364,6 +364,69 @@ pub mod move_tests {
         assert_eq!(m.from, LONG_CASTLING_SQUARE);
         assert_eq!(m.to, LONG_CASTLING_SQUARE);
     }
+
+    #[test]
+    fn parse_disambiguation_two_rooks_file() {
+        // Two white rooks, on f6 and c3, both can reach c6. King on e8 doesn't block.
+        // "Rfc6" should pick the one from f6 (file disambiguation).
+        let mut pos = empty_position(PieceColor::White);
+        let (e8_col, e8_row) = get_col_and_row(E8 as u8);
+        let (a1_col, a1_row) = get_col_and_row(A1 as u8);
+        let (f6_col, f6_row) = get_col_and_row(F6 as u8);
+        let (c3_col, c3_row) = get_col_and_row(C3 as u8);
+        let (c6_col, c6_row) = get_col_and_row(C6 as u8);
+        pos.pieces[a1_row as usize][a1_col as usize] = Some(WHITE_KING);
+        pos.pieces[e8_row as usize][e8_col as usize] = Some(BLACK_KING);
+        pos.pieces[f6_row as usize][f6_col as usize] = Some(WHITE_ROOK);
+        pos.pieces[c3_row as usize][c3_col as usize] = Some(WHITE_ROOK);
+
+        let m = parse_move_algebraic("Rfc6", &pos).unwrap();
+        assert_eq!(m.from, F6 as u8);
+        assert_eq!(m.to, C6 as u8);
+        assert!(!m.capture);
+    }
+
+    #[test]
+    fn parse_disambiguation_two_rooks_rank() {
+        // Two white rooks, on a3 and h3, both can reach c3.
+        // "R3c3" should pick the one from rank 3 (only rank differs).
+        let mut pos = empty_position(PieceColor::White);
+        let (a1_col, a1_row) = get_col_and_row(A1 as u8);
+        let (e8_col, e8_row) = get_col_and_row(E8 as u8);
+        let (c1_col, c1_row) = get_col_and_row(C1 as u8);
+        let (c4_col, c4_row) = get_col_and_row(C4 as u8);
+        let (c3_col, c3_row) = get_col_and_row(C3 as u8);
+        pos.pieces[a1_row as usize][a1_col as usize] = Some(WHITE_KING);
+        pos.pieces[e8_row as usize][e8_col as usize] = Some(BLACK_KING);
+        pos.pieces[c1_row as usize][c1_col as usize] = Some(WHITE_ROOK);
+        pos.pieces[c4_row as usize][c4_col as usize] = Some(WHITE_ROOK);
+
+        let m = parse_move_algebraic("R1c3", &pos).unwrap();
+        assert_eq!(m.from, C1 as u8);
+        assert_eq!(m.to, C3 as u8);
+        assert!(!m.capture);
+    }
+
+    #[test]
+    fn parse_disambiguation_two_knights_file() {
+        // Two white knights on g1 and b1, both can reach f3.
+        // "Ngf3" picks the one from the g-file.
+        let mut pos = empty_position(PieceColor::White);
+        let (a1_col, a1_row) = get_col_and_row(A1 as u8);
+        let (e8_col, e8_row) = get_col_and_row(E8 as u8);
+        let (g1_col, g1_row) = get_col_and_row(G1 as u8);
+        let (d2_col, d2_row) = get_col_and_row(D2 as u8);
+        let (f3_col, f3_row) = get_col_and_row(F3 as u8);
+        pos.pieces[a1_row as usize][a1_col as usize] = Some(WHITE_KING);
+        pos.pieces[e8_row as usize][e8_col as usize] = Some(BLACK_KING);
+        pos.pieces[g1_row as usize][g1_col as usize] = Some(WHITE_KNIGHT);
+        pos.pieces[d2_row as usize][d2_col as usize] = Some(WHITE_KNIGHT);
+
+        let m = parse_move_algebraic("Ngf3", &pos).unwrap();
+        assert_eq!(m.from, G1 as u8);
+        assert_eq!(m.to, F3 as u8);
+        assert!(!m.capture);
+    }
 }
 
 pub mod position_tests {
