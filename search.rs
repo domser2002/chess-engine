@@ -2,8 +2,14 @@ use crate::eval::evaluate;
 use crate::position::{is_in_check, legal_moves, make_move, unmake_move, Position};
 use crate::r#move::Move;
 
-/// Default search depth (half-moves / ply). Depth 3 = engine looks 3 half-moves ahead.
-const DEFAULT_DEPTH: i32 = 4;
+/// Default search depth (half-moves / ply).
+const DEFAULT_DEPTH: i32 = 5;
+
+/// Safe sentinel values for alpha-beta bounds.
+/// Max material in any position is ~39,000 centipawns, so +/-100,000 is safe
+/// and won't overflow when negated.
+const MIN_SCORE: i32 = -100_000;
+const MAX_SCORE: i32 = 100_000;
 
 /// Find the best move using depth-limited minimax at `DEFAULT_DEPTH`.
 pub fn best_move(position: Position) -> Option<Move> {
@@ -19,12 +25,12 @@ pub fn best_move_depth(position: Position, depth: i32) -> Option<Move> {
     }
 
     let mut best = moves[0];
-    let mut best_score = i32::MIN;
+    let mut best_score = MIN_SCORE;
 
     for &m in &moves {
         let mut pos = position;
         let undo = make_move(&mut pos, m);
-        let score = -negamax(pos, depth - 1);
+        let score = -negamax(pos, depth - 1, MIN_SCORE, MAX_SCORE);
         unmake_move(&mut pos, m, undo);
 
         if score > best_score {
@@ -36,34 +42,40 @@ pub fn best_move_depth(position: Position, depth: i32) -> Option<Move> {
     Some(best)
 }
 
-/// Minimax (negamax-style): returns the score from the perspective of the side to move.
-/// At depth 0, evaluates the position. Otherwise tries all legal moves and picks the best.
-fn negamax(position: Position, depth: i32) -> i32 {
+/// Negamax with alpha-beta pruning.
+/// alpha = best score the maximizer can guarantee, beta = best score the minimizer can guarantee.
+/// Returns the score from the perspective of the side to move.
+fn negamax(position: Position, depth: i32, mut alpha: i32, beta: i32) -> i32 {
     if depth == 0 {
         return evaluate(position);
     }
 
     let moves = legal_moves(position);
     if moves.is_empty() {
-        // No legal moves = checkmate or stalemate
         if is_in_check(position, position.turn) {
-            return i32::MIN + 1; // Checkmate (worst possible for this side)
+            return MIN_SCORE + 1;
         }
-        return 0; // Stalemate
+        return 0;
     }
 
-    let mut best_score = i32::MIN;
+    let mut score = MIN_SCORE;
 
     for &m in &moves {
         let mut pos = position;
         let undo = make_move(&mut pos, m);
-        let score = -negamax(pos, depth - 1);
+        let val = -negamax(pos, depth - 1, -beta, -alpha);
         unmake_move(&mut pos, m, undo);
 
-        if score > best_score {
-            best_score = score;
+        if val >= beta {
+            return beta; // Beta cutoff — opponent can force at least this
+        }
+        if val > score {
+            score = val;
+            if val > alpha {
+                alpha = val;
+            }
         }
     }
 
-    best_score
+    score
 }
