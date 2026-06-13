@@ -941,7 +941,7 @@ pub mod search_tests {
     use crate::piece::*;
     use crate::position::*;
     use crate::r#move::*;
-    use crate::search::best_move;
+    use crate::search::*;
     use crate::square::get_col_and_row;
 
     #[test]
@@ -992,5 +992,43 @@ pub mod search_tests {
         // Since d3 is illegal, the best move should not be d3.
         assert!(!(m.from == crate::square::Squares::D2 as u8
             && m.to == crate::square::Squares::D3 as u8));
+    }
+
+    #[test]
+    fn knight_fork() {
+        let mut pos = empty_position(PieceColor::White);
+        let (e1_col, e1_row) = get_col_and_row(crate::square::Squares::E1 as u8);
+        let (e8_col, e8_row) = get_col_and_row(crate::square::Squares::E8 as u8);
+        let (b5_col, b5_row) = get_col_and_row(crate::square::Squares::B5 as u8);
+        let (a8_col, a8_row) = get_col_and_row(crate::square::Squares::A8 as u8);
+        let (c7_col, c7_row) = get_col_and_row(crate::square::Squares::C7 as u8);
+
+        pos.pieces[e1_row as usize][e1_col as usize] = Some(WHITE_KING);
+        pos.pieces[e8_row as usize][e8_col as usize] = Some(BLACK_KING);
+        pos.pieces[b5_row as usize][b5_col as usize] = Some(WHITE_KNIGHT);
+        pos.pieces[a8_row as usize][a8_col as usize] = Some(BLACK_ROOK);
+
+        let m = best_move_depth(pos, 3).unwrap();
+        assert_eq!(m.from, crate::square::Squares::B5 as u8);
+        assert_eq!(m.to, crate::square::Squares::C7 as u8);
+    }
+
+    #[test]
+    fn bishop_fork() {
+        let mut pos = empty_position(PieceColor::White);
+        let (e1_col, e1_row) = get_col_and_row(crate::square::Squares::E1 as u8);
+        let (e8_col, e8_row) = get_col_and_row(crate::square::Squares::E8 as u8);
+        let (b5_col, b5_row) = get_col_and_row(crate::square::Squares::B5 as u8);
+        let (a4_col, a4_row) = get_col_and_row(crate::square::Squares::A4 as u8);
+        let (c4_col, c4_row) = get_col_and_row(crate::square::Squares::C4 as u8);
+
+        pos.pieces[e1_row as usize][e1_col as usize] = Some(WHITE_KING);
+        pos.pieces[e8_row as usize][e8_col as usize] = Some(BLACK_KING);
+        pos.pieces[c4_row as usize][c4_col as usize] = Some(WHITE_BISHOP);
+        pos.pieces[a4_row as usize][a4_col as usize] = Some(BLACK_ROOK);
+
+        let m = best_move_depth(pos, 3).unwrap();
+        assert_eq!(m.from, crate::square::Squares::C4 as u8);
+        assert_eq!(m.to, crate::square::Squares::B5 as u8);
     }
 }
