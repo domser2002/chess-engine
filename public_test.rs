@@ -936,3 +936,61 @@ pub mod eval_tests {
         assert_eq!(evaluate(pos), -900);
     }
 }
+
+pub mod search_tests {
+    use crate::piece::*;
+    use crate::position::*;
+    use crate::r#move::*;
+    use crate::search::best_move;
+    use crate::square::get_col_and_row;
+
+    #[test]
+    fn best_move_from_start() {
+        let pos = start_position();
+        let m = best_move(pos);
+        assert!(m.is_some());
+    }
+
+    #[test]
+    fn captures_hanging_queen() {
+        // White pawn on d4, black queen on e5 — pawn can capture diagonally to e5.
+        let mut pos = empty_position(PieceColor::White);
+        let (e1_col, e1_row) = get_col_and_row(crate::square::Squares::E1 as u8);
+        let (e8_col, e8_row) = get_col_and_row(crate::square::Squares::E8 as u8);
+        let (e5_col, e5_row) = get_col_and_row(crate::square::Squares::E5 as u8);
+        let (d4_col, d4_row) = get_col_and_row(crate::square::Squares::D4 as u8);
+
+        pos.pieces[e1_row as usize][e1_col as usize] = Some(WHITE_KING);
+        pos.pieces[e8_row as usize][e8_col as usize] = Some(BLACK_KING);
+        pos.pieces[e5_row as usize][e5_col as usize] = Some(BLACK_QUEEN);
+        pos.pieces[d4_row as usize][d4_col as usize] = Some(WHITE_PAWN);
+
+        let m = best_move(pos).unwrap();
+        assert_eq!(m.from, crate::square::Squares::D4 as u8);
+        assert_eq!(m.to, crate::square::Squares::E5 as u8);
+        assert!(m.capture);
+    }
+
+    #[test]
+    fn avoids_moving_into_bishop() {
+        // White king on e1, black bishop on a5 (diagonal to e1).
+        // White should not move the pawn on d2 to d3 (would expose king).
+        let mut pos = empty_position(PieceColor::White);
+        let (e1_col, e1_row) = get_col_and_row(crate::square::Squares::E1 as u8);
+        let (e8_col, e8_row) = get_col_and_row(crate::square::Squares::E8 as u8);
+        let (a5_col, a5_row) = get_col_and_row(crate::square::Squares::A5 as u8);
+        let (d2_col, d2_row) = get_col_and_row(crate::square::Squares::D2 as u8);
+
+        pos.pieces[e1_row as usize][e1_col as usize] = Some(WHITE_KING);
+        pos.pieces[e8_row as usize][e8_col as usize] = Some(BLACK_KING);
+        pos.pieces[a5_row as usize][a5_col as usize] = Some(BLACK_BISHOP);
+        pos.pieces[d2_row as usize][d2_col as usize] = Some(WHITE_PAWN);
+
+        let m = best_move(pos).unwrap();
+        // The pawn at d2 should NOT move to d3 (that opens the diagonal)
+        // It should move to d4 or stay put — but legal_moves already filters.
+        // Since d3 is illegal, the best move should not be d3.
+        assert!(!(m.from == crate::square::Squares::D2 as u8
+            && m.to == crate::square::Squares::D3 as u8));
+    }
+}

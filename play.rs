@@ -1,14 +1,12 @@
 use std::io::{self, BufRead, Write};
-use rand::seq::SliceRandom;
 use crate::position::{self, *};
 use crate::r#move::*;
 use crate::piece::*;
 
 /// Run an interactive game where the user types moves in algebraic notation
-/// and the engine responds with random legal moves.
+/// and the engine responds with the best move found by 1-ply search.
 pub fn interactive_loop() {
     let mut position = start_position();
-    let mut rng = rand::thread_rng();
     let mut move_count = 0;
 
     println!("Chess Engine — Interactive Mode");
@@ -89,12 +87,19 @@ pub fn interactive_loop() {
                             break;
                         }
 
-                        // Engine's turn
-                        let engine_choice = opponent_moves.choose(&mut rng).unwrap();
-                        let engine_str = print_move(*engine_choice);
-                        make_move(&mut position, *engine_choice);
-                        move_count += 1;
-                        println!("Engine move: {engine_str}\n");
+                        // Engine's turn — use 1-ply greedy search
+                        match crate::search::best_move(position) {
+                            Some(engine_move) => {
+                                let engine_str = print_move(engine_move);
+                                make_move(&mut position, engine_move);
+                                move_count += 1;
+                                println!("Engine move: {engine_str}\n");
+                            }
+                            None => {
+                                println!("Engine has no legal moves!");
+                                break;
+                            }
+                        }
                     }
                     None => {
                         println!("Invalid move '{}'. Type 'moves' to see available moves.", input);

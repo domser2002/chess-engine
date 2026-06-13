@@ -5,6 +5,7 @@ mod square;
 mod uci;
 mod play;
 mod eval;
+mod search;
 #[cfg(test)]
 mod public_test;
 

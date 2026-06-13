@@ -49,13 +49,14 @@ pub fn uci_loop() {
         }
 
         if trimmed == "go" || trimmed.starts_with("go ") {
-            let moves = legal_moves(position);
-            if moves.is_empty() {
-                println!("bestmove 0000");
-            } else {
-                let choice = moves[0];
-                let uci_str = move_to_uci(choice);
-                println!("bestmove {uci_str}");
+            match crate::search::best_move(position) {
+                Some(m) => {
+                    let uci_str = move_to_uci(m);
+                    println!("bestmove {uci_str}");
+                }
+                None => {
+                    println!("bestmove 0000");
+                }
             }
             io::stdout().flush().unwrap();
             continue;
