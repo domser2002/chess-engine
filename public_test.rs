@@ -899,3 +899,40 @@ pub mod position_tests {
         assert_eq!(moves, expected);
     }
 }
+
+pub mod eval_tests {
+    use crate::eval::evaluate;
+    use crate::piece::*;
+    use crate::position::*;
+    use crate::square::get_col_and_row;
+
+    #[test]
+    fn start_position_even() {
+        assert_eq!(evaluate(start_position()), 0);
+    }
+
+    #[test]
+    fn white_up_one_pawn() {
+        let mut pos = start_position();
+        let (e7_col, e7_row) = get_col_and_row(crate::square::Squares::E7 as u8);
+        pos.pieces[e7_row as usize][e7_col as usize] = None;
+        assert_eq!(evaluate(pos), 100);
+    }
+
+    #[test]
+    fn black_up_a_knight() {
+        let mut pos = start_position();
+        let (g1_col, g1_row) = get_col_and_row(crate::square::Squares::G1 as u8);
+        pos.pieces[g1_row as usize][g1_col as usize] = None;
+        pos.turn = PieceColor::Black;
+        assert_eq!(evaluate(pos), 320);
+    }
+
+    #[test]
+    fn white_down_a_queen() {
+        let mut pos = start_position();
+        let (d1_col, d1_row) = get_col_and_row(crate::square::Squares::D1 as u8);
+        pos.pieces[d1_row as usize][d1_col as usize] = None;
+        assert_eq!(evaluate(pos), -900);
+    }
+}

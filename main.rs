@@ -4,6 +4,7 @@ mod piece;
 mod square;
 mod uci;
 mod play;
+mod eval;
 #[cfg(test)]
 mod public_test;
 
