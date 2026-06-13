@@ -725,6 +725,131 @@ pub mod position_tests {
     }
 
     #[test]
+    fn make_unmake_normal_move() {
+        let mut pos = start_position();
+        let original = pos;
+        let e4 = Move::build(WHITE_PAWN, E2 as u8, E4 as u8);
+        let undo = make_move(&mut pos, e4);
+        assert_ne!(pos, original);
+        unmake_move(&mut pos, e4, undo);
+        assert_eq!(pos, original);
+    }
+
+    #[test]
+    fn make_unmake_capture() {
+        let mut pos = empty_position(PieceColor::White);
+        let (e1_col, e1_row) = get_col_and_row(E1 as u8);
+        let (e8_col, e8_row) = get_col_and_row(E8 as u8);
+        let (e4_col, e4_row) = get_col_and_row(E4 as u8);
+        let (d5_col, d5_row) = get_col_and_row(D5 as u8);
+        pos.pieces[e1_row as usize][e1_col as usize] = Some(WHITE_KING);
+        pos.pieces[e8_row as usize][e8_col as usize] = Some(BLACK_KING);
+        pos.pieces[e4_row as usize][e4_col as usize] = Some(WHITE_PAWN);
+        pos.pieces[d5_row as usize][d5_col as usize] = Some(BLACK_PAWN);
+        let original = pos;
+        let capture = Move::build(WHITE_PAWN, E4 as u8, D5 as u8).capture();
+        let undo = make_move(&mut pos, capture);
+        assert_ne!(pos, original);
+        unmake_move(&mut pos, capture, undo);
+        assert_eq!(pos, original);
+    }
+
+    #[test]
+    fn make_unmake_en_passant() {
+        let mut pos = empty_position(PieceColor::White);
+        let (a1_col, a1_row) = get_col_and_row(A1 as u8);
+        let (a8_col, a8_row) = get_col_and_row(A8 as u8);
+        let (e5_col, e5_row) = get_col_and_row(E5 as u8);
+        let (d5_col, d5_row) = get_col_and_row(D5 as u8);
+        pos.pieces[a1_row as usize][a1_col as usize] = Some(WHITE_KING);
+        pos.pieces[a8_row as usize][a8_col as usize] = Some(BLACK_KING);
+        pos.pieces[e5_row as usize][e5_col as usize] = Some(WHITE_PAWN);
+        pos.pieces[d5_row as usize][d5_col as usize] = Some(BLACK_PAWN);
+        pos.last_move = Some(Move::build(BLACK_PAWN, D7 as u8, D5 as u8));
+        let original = pos;
+        let exd6 = Move::build(WHITE_PAWN, E5 as u8, D6 as u8).capture();
+        let undo = make_move(&mut pos, exd6);
+        assert_ne!(pos, original);
+        unmake_move(&mut pos, exd6, undo);
+        assert_eq!(pos, original);
+    }
+
+    #[test]
+    fn make_unmake_short_castle() {
+        let mut pos = start_position();
+        // Clear path: e4, Nf3, Bc4
+        make_move(&mut pos, Move::build(WHITE_PAWN, E2 as u8, E4 as u8));
+        make_move(&mut pos, Move::build(BLACK_PAWN, A7 as u8, A6 as u8));
+        make_move(&mut pos, Move::build(WHITE_KNIGHT, G1 as u8, F3 as u8));
+        make_move(&mut pos, Move::build(BLACK_PAWN, B7 as u8, B6 as u8));
+        make_move(&mut pos, Move::build(WHITE_BISHOP, F1 as u8, C4 as u8));
+        make_move(&mut pos, Move::build(BLACK_PAWN, C7 as u8, C6 as u8));
+        // Now White can castle short. Save state before castling.
+        let original = pos;
+        let castle = Move::build_short_castling(PieceColor::White);
+        let undo = make_move(&mut pos, castle);
+        assert_ne!(pos, original);
+        unmake_move(&mut pos, castle, undo);
+        assert_eq!(pos, original);
+    }
+
+    #[test]
+    fn make_unmake_long_castle() {
+        let mut pos = start_position();
+        // Clear path: d4, Qd3, Bd2, Nc3
+        make_move(&mut pos, Move::build(WHITE_PAWN, D2 as u8, D4 as u8));
+        make_move(&mut pos, Move::build(BLACK_PAWN, A7 as u8, A6 as u8));
+        make_move(&mut pos, Move::build(WHITE_QUEEN, D1 as u8, D3 as u8));
+        make_move(&mut pos, Move::build(BLACK_PAWN, B7 as u8, B6 as u8));
+        make_move(&mut pos, Move::build(WHITE_BISHOP, C1 as u8, D2 as u8));
+        make_move(&mut pos, Move::build(BLACK_PAWN, C7 as u8, C6 as u8));
+        make_move(&mut pos, Move::build(WHITE_KNIGHT, B1 as u8, C3 as u8));
+        make_move(&mut pos, Move::build(BLACK_PAWN, D7 as u8, D6 as u8));
+        // Now White can castle long
+        let original = pos;
+        let castle = Move::build_long_castling(PieceColor::White);
+        let undo = make_move(&mut pos, castle);
+        assert_ne!(pos, original);
+        unmake_move(&mut pos, castle, undo);
+        assert_eq!(pos, original);
+    }
+
+    #[test]
+    fn make_unmake_promotion() {
+        let mut pos = empty_position(PieceColor::White);
+        let (a1_col, a1_row) = get_col_and_row(A1 as u8);
+        let (a8_col, a8_row) = get_col_and_row(A8 as u8);
+        let (f7_col, f7_row) = get_col_and_row(F7 as u8);
+        let (f8_col, f8_row) = get_col_and_row(F8 as u8);
+        pos.pieces[a1_row as usize][a1_col as usize] = Some(WHITE_KING);
+        pos.pieces[a8_row as usize][a8_col as usize] = Some(BLACK_KING);
+        pos.pieces[f7_row as usize][f7_col as usize] = Some(WHITE_PAWN);
+        let original = pos;
+        let promo = Move::build(WHITE_PAWN, F7 as u8, F8 as u8).promote_to(WHITE_QUEEN);
+        let undo = make_move(&mut pos, promo);
+        assert_ne!(pos, original);
+        unmake_move(&mut pos, promo, undo);
+        assert_eq!(pos, original);
+    }
+
+    #[test]
+    fn make_unmake_castle_rights_restored() {
+        let mut pos = empty_position(PieceColor::White);
+        pos.white_short_castle = true;
+        pos.white_long_castle = true;
+        let (e1_col, e1_row) = get_col_and_row(E1 as u8);
+        pos.pieces[e1_row as usize][e1_col as usize] = Some(WHITE_KING);
+        let original = pos;
+        // Move king: loses both castle rights
+        let kg1 = Move::build(WHITE_KING, E1 as u8, E2 as u8);
+        let undo = make_move(&mut pos, kg1);
+        assert!(!pos.white_short_castle);
+        assert!(!pos.white_long_castle);
+        unmake_move(&mut pos, kg1, undo);
+        assert_eq!(pos, original);
+    }
+
+    #[test]
     fn legal_moves_with_en_passant() {
         let mut position = start_position();
         let e4 = Move::build(WHITE_PAWN, E2 as u8, E4 as u8);

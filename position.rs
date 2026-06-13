@@ -15,6 +15,17 @@ pub struct Position {
     pub black_long_castle: bool,
 }
 
+/// Stores the state that changed during a move, enough to undo it.
+#[derive(Copy, Clone, PartialEq, Debug)]
+pub struct UndoInfo {
+    pub captured: Option<Piece>,
+    pub white_short_castle: bool,
+    pub white_long_castle: bool,
+    pub black_short_castle: bool,
+    pub black_long_castle: bool,
+    pub last_move: Option<Move>,
+}
+
 const ROOK_DIRS: [(i8, i8); 4] = [(1, 0), (-1, 0), (0, 1), (0, -1)];
 const BISHOP_DIRS: [(i8, i8); 4] = [(1, 1), (1, -1), (-1, 1), (-1, -1)];
 const KING_DIRS: [(i8, i8); 8] = [
@@ -448,7 +459,17 @@ pub fn legal_moves(position: Position) -> Vec<Move> {
 // TODO:
 // 1. Check if move is legal.
 // 2. Allow special moves- castling, promotion, en passant.
-pub fn make_move(position: &mut Position, m: Move) {
+pub fn make_move(position: &mut Position, m: Move) -> UndoInfo {
+    // Save state for undo
+    let undo = UndoInfo {
+        captured: None,
+        white_short_castle: position.white_short_castle,
+        white_long_castle: position.white_long_castle,
+        black_short_castle: position.black_short_castle,
+        black_long_castle: position.black_long_castle,
+        last_move: position.last_move,
+    };
+
     // Handle castling moves first (they use sentinel squares, not real coordinates)
     if m.from == SHORT_CASTLING_SQUARE || m.from == LONG_CASTLING_SQUARE {
         let is_long = m.from == LONG_CASTLING_SQUARE;
@@ -484,7 +505,7 @@ pub fn make_move(position: &mut Position, m: Move) {
             position.turn = PieceColor::White;
         }
         position.last_move = Some(m);
-        return;
+        return undo;
     }
 
     let (from_col_idx, from_row_idx) = get_col_and_row(m.from);
@@ -498,6 +519,9 @@ pub fn make_move(position: &mut Position, m: Move) {
                     if dst_piece.piece_color == src_piece.piece_color {
                         panic!("Square is already occupied!");
                     }
+                    // Save captured piece
+                    let mut captured_undo = undo;
+                    captured_undo.captured = Some(dst_piece);
                     // If a rook is captured, lose the corresponding castle right
                     if dst_piece.piece_type == PieceType::Rook {
                         if to_row_idx == 0 && to_col_idx == 0 {
@@ -510,45 +534,94 @@ pub fn make_move(position: &mut Position, m: Move) {
                             position.black_short_castle = false;
                         }
                     }
+                    position.pieces[from_row_idx as usize][from_col_idx as usize] = None;
+                    // Handle promotion
+                    match m.new_piece {
+                        Some(promoted) => {
+                            position.pieces[to_row_idx as usize][to_col_idx as usize] = Some(promoted);
+                        }
+                        None => {
+                            position.pieces[to_row_idx as usize][to_col_idx as usize] = Some(src_piece);
+                        }
+                    }
+                    // Update castle rights when king or rook moves
+                    if src_piece.piece_type == PieceType::King {
+                        if src_piece.piece_color == PieceColor::White {
+                            position.white_short_castle = false;
+                            position.white_long_castle = false;
+                        } else {
+                            position.black_short_castle = false;
+                            position.black_long_castle = false;
+                        }
+                    }
+                    if src_piece.piece_type == PieceType::Rook {
+                        if from_row_idx == 0 && from_col_idx == 0 {
+                            position.white_long_castle = false;
+                        } else if from_row_idx == 0 && from_col_idx == 7 {
+                            position.white_short_castle = false;
+                        } else if from_row_idx == 7 && from_col_idx == 0 {
+                            position.black_long_castle = false;
+                        } else if from_row_idx == 7 && from_col_idx == 7 {
+                            position.black_short_castle = false;
+                        }
+                    }
+                    if position.turn == PieceColor::White {
+                        position.turn = PieceColor::Black;
+                    }
+                    else {
+                        position.turn = PieceColor::White;
+                    }
+                    position.last_move = Some(m);
+                    return captured_undo;
                 }
                 None => {
                     // En passant: pawn capture to an apparently empty square
                     if src_piece.piece_type == PieceType::Pawn && m.capture {
                         position.pieces[from_row_idx as usize][to_col_idx as usize] = None;
                     }
-                }
-            }
-            position.pieces[from_row_idx as usize][from_col_idx as usize] = None;
-
-            // Handle promotion
-            match m.new_piece {
-                Some(promoted) => {
-                    position.pieces[to_row_idx as usize][to_col_idx as usize] = Some(promoted);
-                }
-                None => {
-                    position.pieces[to_row_idx as usize][to_col_idx as usize] = Some(src_piece);
-                }
-            }
-
-            // Update castle rights when king or rook moves
-            if src_piece.piece_type == PieceType::King {
-                if src_piece.piece_color == PieceColor::White {
-                    position.white_short_castle = false;
-                    position.white_long_castle = false;
-                } else {
-                    position.black_short_castle = false;
-                    position.black_long_castle = false;
-                }
-            }
-            if src_piece.piece_type == PieceType::Rook {
-                if from_row_idx == 0 && from_col_idx == 0 {
-                    position.white_long_castle = false;
-                } else if from_row_idx == 0 && from_col_idx == 7 {
-                    position.white_short_castle = false;
-                } else if from_row_idx == 7 && from_col_idx == 0 {
-                    position.black_long_castle = false;
-                } else if from_row_idx == 7 && from_col_idx == 7 {
-                    position.black_short_castle = false;
+                    position.pieces[from_row_idx as usize][from_col_idx as usize] = None;
+                    // Handle promotion
+                    match m.new_piece {
+                        Some(promoted) => {
+                            position.pieces[to_row_idx as usize][to_col_idx as usize] = Some(promoted);
+                        }
+                        None => {
+                            position.pieces[to_row_idx as usize][to_col_idx as usize] = Some(src_piece);
+                        }
+                    }
+                    // We don't need a separate "captured_undo" for en passant because
+                    // we saved the captured pawn info in UndoInfo.captured already.
+                    // Actually no — for en passant, `captured` remains None but the
+                    // pawn *was* removed. We'll detect this in unmake_move.
+                    // Update castle rights when king or rook moves
+                    if src_piece.piece_type == PieceType::King {
+                        if src_piece.piece_color == PieceColor::White {
+                            position.white_short_castle = false;
+                            position.white_long_castle = false;
+                        } else {
+                            position.black_short_castle = false;
+                            position.black_long_castle = false;
+                        }
+                    }
+                    if src_piece.piece_type == PieceType::Rook {
+                        if from_row_idx == 0 && from_col_idx == 0 {
+                            position.white_long_castle = false;
+                        } else if from_row_idx == 0 && from_col_idx == 7 {
+                            position.white_short_castle = false;
+                        } else if from_row_idx == 7 && from_col_idx == 0 {
+                            position.black_long_castle = false;
+                        } else if from_row_idx == 7 && from_col_idx == 7 {
+                            position.black_short_castle = false;
+                        }
+                    }
+                    if position.turn == PieceColor::White {
+                        position.turn = PieceColor::Black;
+                    }
+                    else {
+                        position.turn = PieceColor::White;
+                    }
+                    position.last_move = Some(m);
+                    return undo; // undo.captured is None — signals en passant
                 }
             }
         }
@@ -556,11 +629,88 @@ pub fn make_move(position: &mut Position, m: Move) {
             panic!("No piece on source square!");
         }
     }
+}
+
+/// Undo a move previously made by `make_move`. The `undo` parameter must be
+/// the `UndoInfo` returned by that `make_move` call.
+pub fn unmake_move(position: &mut Position, m: Move, undo: UndoInfo) {
+    // Restore castle rights and last_move first (cheap, no branches)
+    position.white_short_castle = undo.white_short_castle;
+    position.white_long_castle = undo.white_long_castle;
+    position.black_short_castle = undo.black_short_castle;
+    position.black_long_castle = undo.black_long_castle;
+    position.last_move = undo.last_move;
+
+    // Flip the turn back
     if position.turn == PieceColor::White {
         position.turn = PieceColor::Black;
-    }
-    else {
+    } else {
         position.turn = PieceColor::White;
     }
-    position.last_move = Some(m);
+
+    // Handle castling
+    if m.from == SHORT_CASTLING_SQUARE || m.from == LONG_CASTLING_SQUARE {
+        let is_long = m.from == LONG_CASTLING_SQUARE;
+        let king_rank = if m.piece.piece_color == PieceColor::White { 0usize } else { 7usize };
+        let king_to_col = if is_long { 2usize } else { 6usize };
+        let rook_from_col = if is_long { 3usize } else { 5usize };
+        let rook_to_col = if is_long { 0usize } else { 7usize };
+
+        // Restore king to starting square (column 4)
+        position.pieces[king_rank][king_to_col] = None;
+        position.pieces[king_rank][4] = Some(m.piece);
+        // Restore rook
+        position.pieces[king_rank][rook_from_col] = None;
+        position.pieces[king_rank][rook_to_col] = match m.piece.piece_color {
+            PieceColor::White => Some(WHITE_ROOK),
+            PieceColor::Black => Some(BLACK_ROOK),
+        };
+        return;
+    }
+
+    let (from_col, from_row) = get_col_and_row(m.from);
+    let (to_col, to_row) = get_col_and_row(m.to);
+
+    // Restore the moving piece to its from-square.
+    // If it was a promotion, the piece on to-square is the promoted piece;
+    // we need to put a pawn back on the from-square.
+    let moving_piece = if m.new_piece.is_some() {
+        // The piece that moved was a pawn, even though `m.piece` is the promoted type
+        let color = m.piece.piece_color;
+        match color {
+            PieceColor::White => WHITE_PAWN,
+            PieceColor::Black => BLACK_PAWN,
+        }
+    } else {
+        m.piece
+    };
+    position.pieces[from_row as usize][from_col as usize] = Some(moving_piece);
+
+    // Restore the destination square (or en passant captured pawn)
+    match undo.captured {
+        Some(captured) => {
+            // Normal capture: put the captured piece back
+            position.pieces[to_row as usize][to_col as usize] = Some(captured);
+        }
+        None => {
+            if m.capture {
+                // En passant: pawn was captured on (from_row, to_col), not (to_row, to_col)
+                // The destination becomes empty, and the captured pawn goes back
+                // on the rank of the capturing pawn's from-row, same file as capture target.
+                position.pieces[to_row as usize][to_col as usize] = None;
+                let ep_color = match moving_piece.piece_color {
+                    PieceColor::White => PieceColor::Black,
+                    PieceColor::Black => PieceColor::White,
+                };
+                let ep_piece = match ep_color {
+                    PieceColor::White => WHITE_PAWN,
+                    PieceColor::Black => BLACK_PAWN,
+                };
+                position.pieces[from_row as usize][to_col as usize] = Some(ep_piece);
+            } else {
+                // Non-capture: destination becomes empty
+                position.pieces[to_row as usize][to_col as usize] = None;
+            }
+        }
+    }
 }
