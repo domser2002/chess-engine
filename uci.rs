@@ -49,7 +49,41 @@ pub fn uci_loop() {
         }
 
         if trimmed == "go" || trimmed.starts_with("go ") {
-            match crate::search::best_move(position) {
+            // Parse go parameters
+            use crate::search::SearchConfig;
+            let mut config = SearchConfig::default();
+
+            if let Some(params) = trimmed.strip_prefix("go ") {
+                let tokens: Vec<&str> = params.split_whitespace().collect();
+                for (i, token) in tokens.iter().enumerate() {
+                    match *token {
+                        "wtime" => {
+                            if let Some(val) = tokens.get(i + 1).and_then(|s| s.parse::<u64>().ok()) {
+                                if position.turn == PieceColor::White {
+                                    config.time_per_move_ms = val / 40;
+                                }
+                            }
+                        }
+                        "btime" => {
+                            if let Some(val) = tokens.get(i + 1).and_then(|s| s.parse::<u64>().ok()) {
+                                if position.turn == PieceColor::Black {
+                                    config.time_per_move_ms = val / 40;
+                                }
+                            }
+                        }
+                        "depth" => {
+                            if let Some(val) = tokens.get(i + 1).and_then(|s| s.parse::<i32>().ok()) {
+                                config.max_depth = val;
+                                config.time_per_move_ms = 60_000;
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
+
+            let result = crate::search::search_with_time(position, config);
+            match result.best_move {
                 Some(m) => {
                     let uci_str = move_to_uci(m);
                     println!("bestmove {uci_str}");

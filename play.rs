@@ -87,13 +87,16 @@ pub fn interactive_loop() {
                             break;
                         }
 
-                        // Engine's turn — use 1-ply greedy search
-                        match crate::search::best_move(position) {
+                        // Engine's turn — iterative deepening with time management
+                        let config = Default::default();
+                        let result = crate::search::search_with_time(position, config);
+                        match result.best_move {
                             Some(engine_move) => {
                                 let engine_str = print_move(engine_move);
                                 make_move(&mut position, engine_move);
                                 move_count += 1;
-                                println!("Engine move: {engine_str}\n");
+                                println!("Engine move: {engine_str} (depth {})", result.depth_reached);
+                                println!();
                             }
                             None => {
                                 println!("Engine has no legal moves!");
