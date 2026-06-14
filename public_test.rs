@@ -1000,6 +1000,67 @@ pub mod eval_tests {
     }
 }
 
+pub mod uci_tests {
+    use crate::piece::*;
+    use crate::r#move::*;
+    use crate::uci::move_to_uci;
+    use crate::square::Squares::*;
+
+    #[test]
+    fn uci_pawn_move() {
+        let m = Move::build(WHITE_PAWN, E2 as u8, E4 as u8);
+        assert_eq!(move_to_uci(m), "e2e4");
+    }
+
+    #[test]
+    fn uci_knight_move() {
+        let m = Move::build(WHITE_KNIGHT, G1 as u8, F3 as u8);
+        assert_eq!(move_to_uci(m), "g1f3");
+    }
+
+    #[test]
+    fn uci_capture() {
+        let m = Move::build(WHITE_PAWN, E4 as u8, D5 as u8).capture();
+        assert_eq!(move_to_uci(m), "e4d5");
+    }
+
+    #[test]
+    fn uci_promotion_queen() {
+        let m = Move::build(WHITE_PAWN, E7 as u8, E8 as u8).promote_to(WHITE_QUEEN);
+        assert_eq!(move_to_uci(m), "e7e8q");
+    }
+
+    #[test]
+    fn uci_promotion_knight() {
+        let m = Move::build(BLACK_PAWN, A2 as u8, A1 as u8).promote_to(BLACK_KNIGHT);
+        assert_eq!(move_to_uci(m), "a2a1n");
+    }
+
+    #[test]
+    fn uci_white_short_castle() {
+        let m = Move::build_short_castling(PieceColor::White);
+        assert_eq!(move_to_uci(m), "e1g1");
+    }
+
+    #[test]
+    fn uci_black_short_castle() {
+        let m = Move::build_short_castling(PieceColor::Black);
+        assert_eq!(move_to_uci(m), "e8g8");
+    }
+
+    #[test]
+    fn uci_white_long_castle() {
+        let m = Move::build_long_castling(PieceColor::White);
+        assert_eq!(move_to_uci(m), "e1c1");
+    }
+
+    #[test]
+    fn uci_black_long_castle() {
+        let m = Move::build_long_castling(PieceColor::Black);
+        assert_eq!(move_to_uci(m), "e8c8");
+    }
+}
+
 pub mod search_tests {
     use crate::piece::*;
     use crate::position::*;

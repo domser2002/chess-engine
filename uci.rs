@@ -122,11 +122,15 @@ fn parse_position(position: &mut Position, line: &str) {
 }
 
 /// Convert a Move to UCI notation (e.g. "e2e4", "e7e8q").
-fn move_to_uci(m: Move) -> String {
+pub fn move_to_uci(m: Move) -> String {
     use crate::square::get_square_name;
 
     if m.from == SHORT_CASTLING_SQUARE {
-        return "e1g1".to_string();
+        return if m.piece.piece_color == PieceColor::White {
+            "e1g1".to_string()
+        } else {
+            "e8g8".to_string()
+        };
     }
     if m.from == LONG_CASTLING_SQUARE {
         // Determine color from piece
