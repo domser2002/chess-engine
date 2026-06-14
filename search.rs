@@ -58,7 +58,7 @@ pub fn search_with_time(position: Position, config: SearchConfig) -> SearchResul
     };
 
     // Iterative deepening: search depth 1, 2, 3, ... until time runs out
-    for depth in 1..=config.max_depth {
+    'outer: for depth in 1..=config.max_depth {
         // Check if we still have time to search this depth
         if Instant::now() >= deadline && depth > 1 {
             break;
@@ -66,10 +66,12 @@ pub fn search_with_time(position: Position, config: SearchConfig) -> SearchResul
 
         let mut best = moves[0];
         let mut best_score = MIN_SCORE;
+        let mut completed = true;
 
         for &m in &moves {
             // Check time periodically (at each root move)
             if Instant::now() >= deadline && depth > 1 {
+                completed = false;
                 break;
             }
 
@@ -84,11 +86,15 @@ pub fn search_with_time(position: Position, config: SearchConfig) -> SearchResul
             }
         }
 
-        best_result = SearchResult {
-            best_move: Some(best),
-            depth_reached: depth,
-            score: best_score,
-        };
+        // Only store the result if we completed the full depth search.
+        // A partial result (timeout mid-depth) could be worse than a previous depth.
+        if completed {
+            best_result = SearchResult {
+                best_move: Some(best),
+                depth_reached: depth,
+                score: best_score,
+            };
+        }
     }
 
     best_result

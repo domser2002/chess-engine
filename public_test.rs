@@ -1006,6 +1006,7 @@ pub mod search_tests {
     use crate::r#move::*;
     use crate::search::*;
     use crate::square::get_col_and_row;
+    use crate::square::Squares::*;
 
     #[test]
     fn best_move_from_start() {
@@ -1093,5 +1094,43 @@ pub mod search_tests {
         let m = best_move_depth(pos, 3).unwrap();
         assert_eq!(m.from, crate::square::Squares::C4 as u8);
         assert_eq!(m.to, crate::square::Squares::B5 as u8);
+    }
+
+    #[test]
+    fn black_saves_queen_after_de7() {
+        // Reproduce the game sequence where the engine blundered the queen.
+        // White played 6.de7, the pawn on e7 attacks Black's queen on d8.
+        // At ANY depth, the engine must save the queen.
+        let mut pos = start_position();
+
+        // 1. d4 b6
+        make_move(&mut pos, Move::build(WHITE_PAWN, D2 as u8, D4 as u8));
+        make_move(&mut pos, Move::build(BLACK_PAWN, B7 as u8, B6 as u8));
+        // 2. e4 a6
+        make_move(&mut pos, Move::build(WHITE_PAWN, E2 as u8, E4 as u8));
+        make_move(&mut pos, Move::build(BLACK_PAWN, A7 as u8, A6 as u8));
+        // 3. d5 a5
+        make_move(&mut pos, Move::build(WHITE_PAWN, D4 as u8, D5 as u8));
+        make_move(&mut pos, Move::build(BLACK_PAWN, A6 as u8, A5 as u8));
+        // 4. e5 a4
+        make_move(&mut pos, Move::build(WHITE_PAWN, E4 as u8, E5 as u8));
+        make_move(&mut pos, Move::build(BLACK_PAWN, A5 as u8, A4 as u8));
+        // 5. d6 Ra7
+        make_move(&mut pos, Move::build(WHITE_PAWN, D5 as u8, D6 as u8));
+        make_move(&mut pos, Move::build(BLACK_ROOK, A8 as u8, A7 as u8));
+        // 6. de7 — pawn on d6 captures e7, now attacks d8
+        make_move(&mut pos, Move::build(WHITE_PAWN, D6 as u8, E7 as u8).capture());
+
+        // Black to move. Queen under attack by pawn on e7.
+        // Depth 3 is instant and should see the hanging queen.
+        let result = search_with_time(pos, SearchConfig { max_depth: 3, time_per_move_ms: 30_000 });
+        let m = result.best_move.unwrap();
+        // The engine must save the queen. It can either move the queen away,
+        // or capture the attacking pawn on e7 with any piece (K, Q, B, or N).
+        assert!(
+            m.piece.piece_type == PieceType::Queen || m.to == E7 as u8,
+            "Engine blundered! Should save queen but played {} from {} to {}",
+            crate::r#move::print_move(m), m.from, m.to
+        );
     }
 }
