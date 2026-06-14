@@ -1,7 +1,7 @@
 use std::io::{self, Write};
 use std::time::{Duration, Instant};
 use crate::eval::{evaluate, piece_value};
-use crate::position::{is_in_check, legal_moves, make_move, unmake_move, Position};
+use crate::position::{is_in_check, legal_moves, capture_moves, make_move, unmake_move, Position};
 use crate::r#move::Move;
 
 /// Default search depth (half-moves / ply).
@@ -87,7 +87,6 @@ pub fn search_with_time(position: Position, config: SearchConfig) -> SearchResul
         let mut best = moves[0];
         let mut best_score = MIN_SCORE;
         let mut completed = true;
-        let mut depth_nodes: u64 = 0;
 
         for &m in &moves {
             // Check time periodically (at each root move)
@@ -99,7 +98,7 @@ pub fn search_with_time(position: Position, config: SearchConfig) -> SearchResul
             let mut pos = position;
             let undo = make_move(&mut pos, m);
             // Root moves are ply 0
-            let score = -negamax(pos, depth - 1, MIN_SCORE, MAX_SCORE, &mut depth_nodes, 1, &mut killers);
+            let score = -negamax(pos, depth - 1, MIN_SCORE, MAX_SCORE, &mut total_nodes, 1, &mut killers);
             unmake_move(&mut pos, m, undo);
 
             if score > best_score {
@@ -112,7 +111,6 @@ pub fn search_with_time(position: Position, config: SearchConfig) -> SearchResul
         // A partial result (timeout mid-depth) could be worse than a previous depth.
         if completed {
             best_from_prev = Some(best);
-            total_nodes += depth_nodes;
             best_result = SearchResult {
                 best_move: Some(best),
                 depth_reached: depth,
@@ -128,6 +126,7 @@ pub fn search_with_time(position: Position, config: SearchConfig) -> SearchResul
         }
     }
 
+    best_result.nodes = total_nodes;
     best_result
 }
 
@@ -202,20 +201,16 @@ fn quiescence(position: Position, mut alpha: i32, beta: i32, nodes: &mut u64, pl
     if stand_pat >= beta {
         return beta;
     }
-    if alpha < stand_pat {
+    if stand_pat > alpha {
         alpha = stand_pat;
     }
 
-    let mut moves = legal_moves(position);
+    let mut moves = capture_moves(position);
     order_moves(&position, &mut moves, ply, killers);
 
     let mut score = stand_pat;
 
     for &m in &moves {
-        if !m.capture {
-            continue; // Only search captures in quiescence
-        }
-
         let mut pos = position;
         let undo = make_move(&mut pos, m);
         let val = -quiescence(pos, -beta, -alpha, nodes, ply + 1, killers);

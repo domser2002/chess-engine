@@ -572,6 +572,19 @@ pub fn legal_moves(position: Position) -> Vec<Move> {
         .collect()
 }
 
+/// Generate only legal capture moves. Faster for Quiescence Search because it skips legality checks for quiet moves.
+pub fn capture_moves(position: Position) -> Vec<Move> {
+    pseudo_legal_moves(position)
+        .into_iter()
+        .filter(|m| m.capture)
+        .filter(|&m| {
+            let mut pos = position;
+            make_move(&mut pos, m);
+            !is_in_check(pos, position.turn)
+        })
+        .collect()
+}
+
 // TODO:
 // 1. Check if move is legal.
 // 2. Allow special moves- castling, promotion, en passant.
