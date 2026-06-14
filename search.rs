@@ -1,11 +1,11 @@
 use std::io::{self, Write};
 use std::time::{Duration, Instant};
-use crate::eval::evaluate;
+use crate::eval::{evaluate, piece_value};
 use crate::position::{is_in_check, legal_moves, make_move, unmake_move, Position};
 use crate::r#move::Move;
 
 /// Default search depth (half-moves / ply).
-const DEFAULT_DEPTH: i32 = 5;
+const DEFAULT_DEPTH: i32 = 100;
 
 /// Default time per move in seconds.
 const DEFAULT_MOVE_TIME_SECS: u64 = 10;
@@ -47,7 +47,8 @@ pub struct SearchResult {
 /// Find the best move using iterative deepening with time management.
 /// Starts at depth 1, increases depth until time runs out or max_depth is reached.
 pub fn search_with_time(position: Position, config: SearchConfig) -> SearchResult {
-    let moves = legal_moves(position);
+    let mut moves = legal_moves(position);
+    order_moves(&position, &mut moves);
     if moves.is_empty() {
         return SearchResult {
             best_move: None,
@@ -145,7 +146,8 @@ fn negamax(position: Position, depth: i32, mut alpha: i32, beta: i32, nodes: &mu
         return evaluate(position);
     }
 
-    let moves = legal_moves(position);
+    let mut moves = legal_moves(position);
+    order_moves(&position, &mut moves);
     if moves.is_empty() {
         if is_in_check(position, position.turn) {
             return MIN_SCORE + 1;
@@ -173,4 +175,25 @@ fn negamax(position: Position, depth: i32, mut alpha: i32, beta: i32, nodes: &mu
     }
 
     score
+}
+
+/// Score a move for move ordering (MVV-LVA).
+fn score_move(position: &Position, m: &Move) -> i32 {
+    if m.capture {
+        let (col, row) = crate::square::get_col_and_row(m.to);
+        let victim_val = match position.pieces[row as usize][col as usize] {
+            Some(p) => piece_value(p),
+            None => 100, // En passant capture victim is always a pawn
+        };
+        let attacker_val = piece_value(m.piece);
+        // MVV-LVA: Most Valuable Victim - Least Valuable Attacker
+        10 * victim_val - attacker_val
+    } else {
+        0
+    }
+}
+
+/// Order moves to improve alpha-beta pruning efficiency.
+fn order_moves(position: &Position, moves: &mut [Move]) {
+    moves.sort_unstable_by_key(|m| -score_move(position, m));
 }

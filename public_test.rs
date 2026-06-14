@@ -427,6 +427,31 @@ pub mod move_tests {
         assert_eq!(m.to, F3 as u8);
         assert!(!m.capture);
     }
+
+    #[test]
+    fn parse_disambiguation_pawn_capture_without_x() {
+        // Pawns on a2 and c2 can both capture on b3.
+        // User types "cb3" (shorthand for cxb3).
+        // The parser should pick the pawn on c2, not a2.
+        let mut pos = empty_position(PieceColor::White);
+        let (a1_col, a1_row) = get_col_and_row(A1 as u8);
+        let (e8_col, e8_row) = get_col_and_row(E8 as u8);
+        let (a2_col, a2_row) = get_col_and_row(A2 as u8);
+        let (c2_col, c2_row) = get_col_and_row(C2 as u8);
+        let (b3_col, b3_row) = get_col_and_row(B3 as u8);
+        
+        pos.pieces[a1_row as usize][a1_col as usize] = Some(WHITE_KING);
+        pos.pieces[e8_row as usize][e8_col as usize] = Some(BLACK_KING);
+        pos.pieces[a2_row as usize][a2_col as usize] = Some(WHITE_PAWN);
+        pos.pieces[c2_row as usize][c2_col as usize] = Some(WHITE_PAWN);
+        // Put a black piece on b3 so it's a valid capture square
+        pos.pieces[b3_row as usize][b3_col as usize] = Some(BLACK_KNIGHT);
+
+        let m = parse_move_algebraic("cb3", &pos).unwrap();
+        assert_eq!(m.from, C2 as u8);
+        assert_eq!(m.to, B3 as u8);
+        assert!(m.capture);
+    }
 }
 
 pub mod position_tests {

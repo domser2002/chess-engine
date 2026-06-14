@@ -9,7 +9,7 @@ const ROOK_VALUE: i32 = 500;
 const QUEEN_VALUE: i32 = 900;
 const KING_VALUE: i32 = 20_000;
 
-fn piece_value(piece: Piece) -> i32 {
+pub fn piece_value(piece: Piece) -> i32 {
     match piece.piece_type {
         PieceType::Pawn => PAWN_VALUE,
         PieceType::Knight => KNIGHT_VALUE,

@@ -269,9 +269,7 @@ fn parse_move_algebraic_body(body: &str, piece_type: PieceType, promo: Option<Pi
 
     // Separate an optional 'x' (capture indicator) from the disambiguation characters
     let mut disambig = prefix;
-    let mut capture_input = false;
     if let Some(idx) = disambig.rfind('x') {
-        capture_input = true;
         disambig = &disambig[..idx]; // characters before 'x'
     }
 
@@ -297,25 +295,16 @@ fn parse_move_algebraic_body(body: &str, piece_type: PieceType, promo: Option<Pi
         } else if m.new_piece.is_some() {
             return false;
         }
-        // For pawns, capture input must include the source file
-        if piece_type == PieceType::Pawn && capture_input {
-            let (from_col, _) = square::get_col_and_row(m.from);
-            if ambig_file != Some(from_col) {
+        // Check disambiguation for all pieces (including pawns, even without 'x')
+        let (from_col, from_row) = square::get_col_and_row(m.from);
+        if let Some(f) = ambig_file {
+            if from_col != f {
                 return false;
             }
         }
-        // For non-pawns, check disambiguation
-        if piece_type != PieceType::Pawn {
-            let (from_col, from_row) = square::get_col_and_row(m.from);
-            if let Some(f) = ambig_file {
-                if from_col != f {
-                    return false;
-                }
-            }
-            if let Some(r) = ambig_rank {
-                if from_row != r {
-                    return false;
-                }
+        if let Some(r) = ambig_rank {
+            if from_row != r {
+                return false;
             }
         }
         true
