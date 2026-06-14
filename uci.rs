@@ -52,6 +52,7 @@ pub fn uci_loop() {
             // Parse go parameters
             use crate::search::SearchConfig;
             let mut config = SearchConfig::default();
+            config.uci_output = true;
 
             if let Some(params) = trimmed.strip_prefix("go ") {
                 let tokens: Vec<&str> = params.split_whitespace().collect();

@@ -1,3 +1,4 @@
+use std::io::{self, Write};
 use std::time::{Duration, Instant};
 use crate::eval::evaluate;
 use crate::position::{is_in_check, legal_moves, make_move, unmake_move, Position};
@@ -20,6 +21,8 @@ pub struct SearchConfig {
     pub time_per_move_ms: u64,
     /// Maximum search depth (overrides time if reached first).
     pub max_depth: i32,
+    /// If true, print UCI `info` lines after each completed depth.
+    pub uci_output: bool,
 }
 
 impl Default for SearchConfig {
@@ -27,6 +30,7 @@ impl Default for SearchConfig {
         Self {
             time_per_move_ms: DEFAULT_MOVE_TIME_SECS * 1000,
             max_depth: DEFAULT_DEPTH,
+            uci_output: false,
         }
     }
 }
@@ -53,7 +57,8 @@ pub fn search_with_time(position: Position, config: SearchConfig) -> SearchResul
         };
     }
 
-    let deadline = Instant::now() + Duration::from_millis(config.time_per_move_ms);
+    let start = Instant::now();
+    let deadline = start + Duration::from_millis(config.time_per_move_ms);
     let mut best_result = SearchResult {
         best_move: Some(moves[0]),
         depth_reached: 0,
@@ -102,6 +107,12 @@ pub fn search_with_time(position: Position, config: SearchConfig) -> SearchResul
                 score: best_score,
                 nodes: total_nodes,
             };
+
+            if config.uci_output {
+                let elapsed_ms = start.elapsed().as_millis();
+                println!("info depth {depth} score cp {best_score} nodes {total_nodes} time {elapsed_ms}");
+                io::stdout().flush().unwrap();
+            }
         }
     }
 
@@ -120,6 +131,7 @@ pub fn best_move_depth(position: Position, depth: i32) -> Option<Move> {
     let config = SearchConfig {
         max_depth: depth,
         time_per_move_ms: 60_000,
+        uci_output: false,
     };
     search_with_time(position, config).best_move
 }
