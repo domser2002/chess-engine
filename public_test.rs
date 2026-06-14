@@ -1287,6 +1287,38 @@ pub mod search_tests {
     }
 
     #[test]
+    fn node_counter_is_nonzero() {
+        let pos = start_position();
+        let config = SearchConfig { max_depth: 2, time_per_move_ms: 60_000 };
+        let result = search_with_time(pos, config);
+        assert!(result.nodes > 0, "Search must count at least one node");
+    }
+
+    #[test]
+    fn node_counter_zero_when_no_moves() {
+        // Black king on a8, white queen on b6, white king on c8 — black is stalemated
+        let pos = parse_fen("k7/8/1Q6/8/8/8/8/2K5 b - - 0 1").unwrap();
+        let moves = legal_moves(pos);
+        // Verify it's actually stalemate (no legal moves for black)
+        assert!(moves.is_empty());
+        let config = SearchConfig { max_depth: 5, time_per_move_ms: 60_000 };
+        let result = search_with_time(pos, config);
+        assert_eq!(result.nodes, 0);
+    }
+
+    #[test]
+    fn node_counter_increases_with_depth() {
+        let pos = parse_fen("4k3/8/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ - 0 1").unwrap();
+        let result_d1 = search_with_time(pos, SearchConfig { max_depth: 1, time_per_move_ms: 60_000 });
+        let result_d3 = search_with_time(pos, SearchConfig { max_depth: 3, time_per_move_ms: 60_000 });
+        assert!(
+            result_d3.nodes > result_d1.nodes,
+            "Depth 3 ({} nodes) should search more nodes than depth 1 ({} nodes)",
+            result_d3.nodes, result_d1.nodes
+        );
+    }
+
+    #[test]
     fn captures_hanging_queen() {
         // White pawn on d4, black queen on e5 — pawn can capture diagonally to e5.
         let mut pos = empty_position(PieceColor::White);

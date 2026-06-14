@@ -37,6 +37,7 @@ pub struct SearchResult {
     pub best_move: Option<Move>,
     pub depth_reached: i32,
     pub score: i32,
+    pub nodes: u64,
 }
 
 /// Find the best move using iterative deepening with time management.
@@ -48,6 +49,7 @@ pub fn search_with_time(position: Position, config: SearchConfig) -> SearchResul
             best_move: None,
             depth_reached: 0,
             score: 0,
+            nodes: 0,
         };
     }
 
@@ -56,7 +58,9 @@ pub fn search_with_time(position: Position, config: SearchConfig) -> SearchResul
         best_move: Some(moves[0]),
         depth_reached: 0,
         score: MIN_SCORE,
+        nodes: 0,
     };
+    let mut total_nodes: u64 = 0;
 
     // Iterative deepening: search depth 1, 2, 3, ... until time runs out
     for depth in 1..=config.max_depth {
@@ -68,6 +72,7 @@ pub fn search_with_time(position: Position, config: SearchConfig) -> SearchResul
         let mut best = moves[0];
         let mut best_score = MIN_SCORE;
         let mut completed = true;
+        let mut depth_nodes: u64 = 0;
 
         for &m in &moves {
             // Check time periodically (at each root move)
@@ -78,7 +83,7 @@ pub fn search_with_time(position: Position, config: SearchConfig) -> SearchResul
 
             let mut pos = position;
             let undo = make_move(&mut pos, m);
-            let score = -negamax(pos, depth - 1, MIN_SCORE, MAX_SCORE);
+            let score = -negamax(pos, depth - 1, MIN_SCORE, MAX_SCORE, &mut depth_nodes);
             unmake_move(&mut pos, m, undo);
 
             if score > best_score {
@@ -90,10 +95,12 @@ pub fn search_with_time(position: Position, config: SearchConfig) -> SearchResul
         // Only store the result if we completed the full depth search.
         // A partial result (timeout mid-depth) could be worse than a previous depth.
         if completed {
+            total_nodes += depth_nodes;
             best_result = SearchResult {
                 best_move: Some(best),
                 depth_reached: depth,
                 score: best_score,
+                nodes: total_nodes,
             };
         }
     }
@@ -118,7 +125,10 @@ pub fn best_move_depth(position: Position, depth: i32) -> Option<Move> {
 }
 
 /// Negamax with alpha-beta pruning.
-fn negamax(position: Position, depth: i32, mut alpha: i32, beta: i32) -> i32 {
+/// `nodes` is incremented for every position evaluated.
+fn negamax(position: Position, depth: i32, mut alpha: i32, beta: i32, nodes: &mut u64) -> i32 {
+    *nodes += 1;
+
     if depth == 0 {
         return evaluate(position);
     }
@@ -136,7 +146,7 @@ fn negamax(position: Position, depth: i32, mut alpha: i32, beta: i32) -> i32 {
     for &m in &moves {
         let mut pos = position;
         let undo = make_move(&mut pos, m);
-        let val = -negamax(pos, depth - 1, -beta, -alpha);
+        let val = -negamax(pos, depth - 1, -beta, -alpha, nodes);
         unmake_move(&mut pos, m, undo);
 
         if val >= beta {
