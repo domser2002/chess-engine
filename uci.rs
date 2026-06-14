@@ -115,9 +115,26 @@ fn parse_position(position: &mut Position, line: &str) {
                 }
             }
         }
-    } else if rest.starts_with("fen") {
-        // FEN parsing not implemented yet — reset to start as fallback
-        *position = start_position();
+    } else if rest.starts_with("fen ") {
+        let fen_and_moves = rest.strip_prefix("fen ").unwrap_or("");
+        // FEN has 4–6 space-separated fields; "moves" keyword separates them
+        let (fen_str, moves_str) = if let Some(idx) = fen_and_moves.find(" moves ") {
+            (&fen_and_moves[..idx], Some(&fen_and_moves[idx + 7..]))
+        } else {
+            (fen_and_moves, None)
+        };
+
+        if let Some(pos) = position::parse_fen(fen_str) {
+            *position = pos;
+        }
+
+        if let Some(moves) = moves_str {
+            for move_str in moves.split_whitespace() {
+                if let Some(m) = parse_move_uci(move_str, position) {
+                    make_move(position, m);
+                }
+            }
+        }
     }
 }
 

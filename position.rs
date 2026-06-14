@@ -66,6 +66,120 @@ pub fn start_position() -> Position {
     }
 }
 
+/// Parse a FEN string into a Position.
+///
+/// FEN format: `<pieces> <color> <castling> <en_passant> [<halfmove> <fullmove>]`
+///
+/// Example: `"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"`
+///
+/// Returns `None` if the FEN string is malformed.
+/// Halfmove clock and fullmove number are parsed but not stored
+/// (the engine does not track them).
+pub fn parse_fen(fen: &str) -> Option<Position> {
+    let parts: Vec<&str> = fen.split_whitespace().collect();
+    if parts.len() < 4 {
+        return None;
+    }
+
+    let mut pos = empty_position(PieceColor::White);
+
+    // 1. Piece placement — ranks from 8 (top) to 1 (bottom), separated by '/'
+    let ranks: Vec<&str> = parts[0].split('/').collect();
+    if ranks.len() != 8 {
+        return None;
+    }
+
+    for (rank_from_top, rank_str) in ranks.iter().enumerate() {
+        let row = 7 - rank_from_top; // FEN rank 8 = row index 7
+        let mut col: usize = 0;
+        for ch in rank_str.chars() {
+            if col > 8 {
+                return None;
+            }
+            if let Some(digit) = ch.to_digit(10) {
+                col += digit as usize;
+            } else {
+                let piece = fen_char_to_piece(ch)?;
+                if col >= 8 {
+                    return None;
+                }
+                pos.pieces[row][col] = Some(piece);
+                col += 1;
+            }
+        }
+        if col != 8 {
+            return None;
+        }
+    }
+
+    // 2. Active color
+    pos.turn = match parts[1] {
+        "w" => PieceColor::White,
+        "b" => PieceColor::Black,
+        _ => return None,
+    };
+
+    // 3. Castling availability
+    let castling = parts[2];
+    if castling != "-" {
+        pos.white_short_castle = castling.contains('K');
+        pos.white_long_castle = castling.contains('Q');
+        pos.black_short_castle = castling.contains('k');
+        pos.black_long_castle = castling.contains('q');
+    }
+
+    // 4. En passant target square
+    //    Synthesize a last_move representing the double pawn push so the
+    //    existing en passant logic in add_pawn_moves / try_en_passant works.
+    if parts[3] != "-" {
+        let ep = parts[3];
+        if ep.len() != 2 {
+            return None;
+        }
+        let file = ep.as_bytes()[0].wrapping_sub(b'a');
+        let rank = ep.as_bytes()[1].wrapping_sub(b'1');
+        if file >= 8 || rank >= 8 {
+            return None;
+        }
+
+        if rank == 2 {
+            // Target on rank 3 → white pawn moved from rank 2 to rank 4
+            let from = get_square_idx(1, file);
+            let to = get_square_idx(3, file);
+            pos.last_move = Some(Move::build(WHITE_PAWN, from, to));
+        } else if rank == 5 {
+            // Target on rank 6 → black pawn moved from rank 7 to rank 5
+            let from = get_square_idx(6, file);
+            let to = get_square_idx(4, file);
+            pos.last_move = Some(Move::build(BLACK_PAWN, from, to));
+        }
+    }
+
+    // Fields 5–6 (halfmove clock, fullmove number) are accepted but not stored.
+
+    Some(pos)
+}
+
+/// Convert a FEN piece character to a Piece.
+fn fen_char_to_piece(ch: char) -> Option<Piece> {
+    match ch {
+        'P' => Some(WHITE_PAWN),
+        'N' => Some(WHITE_KNIGHT),
+        'B' => Some(WHITE_BISHOP),
+        'R' => Some(WHITE_ROOK),
+        'Q' => Some(WHITE_QUEEN),
+        'K' => Some(WHITE_KING),
+        'p' => Some(BLACK_PAWN),
+        'n' => Some(BLACK_KNIGHT),
+        'b' => Some(BLACK_BISHOP),
+        'r' => Some(BLACK_ROOK),
+        'q' => Some(BLACK_QUEEN),
+        'k' => Some(BLACK_KING),
+        _ => None,
+    }
+}
+
+
 fn print_colored(c: char, pc: PieceColor) {
     let text = c.to_string();
     let colored = match pc {

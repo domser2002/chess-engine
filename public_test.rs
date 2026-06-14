@@ -1000,6 +1000,217 @@ pub mod eval_tests {
     }
 }
 
+pub mod fen_tests {
+    use crate::piece::*;
+    use crate::position::*;
+    use crate::r#move::*;
+    use crate::square::Squares::*;
+    use crate::square::get_col_and_row;
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn start_position_fen() {
+        let fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+        let pos = parse_fen(fen).unwrap();
+        let expected = start_position();
+        assert_eq!(pos.pieces, expected.pieces);
+        assert_eq!(pos.turn, PieceColor::White);
+        assert!(pos.white_short_castle);
+        assert!(pos.white_long_castle);
+        assert!(pos.black_short_castle);
+        assert!(pos.black_long_castle);
+        assert!(pos.last_move.is_none());
+    }
+
+    #[test]
+    fn black_to_move() {
+        let fen = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1";
+        let pos = parse_fen(fen).unwrap();
+        assert_eq!(pos.turn, PieceColor::Black);
+    }
+
+    #[test]
+    fn pieces_after_e4() {
+        // After 1. e4: pawn on e4, e2 empty
+        let fen = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1";
+        let pos = parse_fen(fen).unwrap();
+        let (e2_col, e2_row) = get_col_and_row(E2 as u8);
+        let (e4_col, e4_row) = get_col_and_row(E4 as u8);
+        assert!(pos.pieces[e2_row as usize][e2_col as usize].is_none());
+        assert_eq!(pos.pieces[e4_row as usize][e4_col as usize], Some(WHITE_PAWN));
+    }
+
+    #[test]
+    fn no_castling_rights() {
+        let fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1";
+        let pos = parse_fen(fen).unwrap();
+        assert!(!pos.white_short_castle);
+        assert!(!pos.white_long_castle);
+        assert!(!pos.black_short_castle);
+        assert!(!pos.black_long_castle);
+    }
+
+    #[test]
+    fn partial_castling_white_kingside_only() {
+        let fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w K - 0 1";
+        let pos = parse_fen(fen).unwrap();
+        assert!(pos.white_short_castle);
+        assert!(!pos.white_long_castle);
+        assert!(!pos.black_short_castle);
+        assert!(!pos.black_long_castle);
+    }
+
+    #[test]
+    fn partial_castling_black_queenside_only() {
+        let fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w q - 0 1";
+        let pos = parse_fen(fen).unwrap();
+        assert!(!pos.white_short_castle);
+        assert!(!pos.white_long_castle);
+        assert!(!pos.black_short_castle);
+        assert!(pos.black_long_castle);
+    }
+
+    #[test]
+    fn en_passant_white_push() {
+        // After 1. e4, en passant target is e3
+        let fen = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1";
+        let pos = parse_fen(fen).unwrap();
+        // last_move should synthesize a white pawn double push e2→e4
+        let lm = pos.last_move.unwrap();
+        assert_eq!(lm.piece, WHITE_PAWN);
+        assert_eq!(lm.from, E2 as u8);
+        assert_eq!(lm.to, E4 as u8);
+    }
+
+    #[test]
+    fn en_passant_black_push() {
+        // After 1. e4 d5 2. e5 f5, en passant target is f6
+        let fen = "rnbqkbnr/ppppp1pp/8/4Pp2/8/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 3";
+        let pos = parse_fen(fen).unwrap();
+        // last_move should synthesize a black pawn double push f7→f5
+        let lm = pos.last_move.unwrap();
+        assert_eq!(lm.piece, BLACK_PAWN);
+        assert_eq!(lm.from, F7 as u8);
+        assert_eq!(lm.to, F5 as u8);
+    }
+
+    #[test]
+    fn en_passant_capture_available() {
+        // White pawn on e5, black just played f7-f5. En passant exf6 should be legal.
+        let fen = "rnbqkbnr/ppppp1pp/8/4Pp2/8/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 3";
+        let pos = parse_fen(fen).unwrap();
+        let moves = legal_moves(pos);
+        // There should be an en passant capture: e5 pawn captures on f6
+        let ep = moves.iter().find(|m| {
+            m.piece == WHITE_PAWN && m.from == E5 as u8 && m.to == F6 as u8 && m.capture
+        });
+        assert!(ep.is_some(), "En passant capture e5xf6 should be legal");
+    }
+
+    #[test]
+    fn middlegame_position() {
+        // Italian Game position after 1.e4 e5 2.Nf3 Nc6 3.Bc4
+        let fen = "r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 3 3";
+        let pos = parse_fen(fen).unwrap();
+        assert_eq!(pos.turn, PieceColor::Black);
+        // White bishop on c4
+        let (c4_col, c4_row) = get_col_and_row(C4 as u8);
+        assert_eq!(pos.pieces[c4_row as usize][c4_col as usize], Some(WHITE_BISHOP));
+        // White knight on f3
+        let (f3_col, f3_row) = get_col_and_row(F3 as u8);
+        assert_eq!(pos.pieces[f3_row as usize][f3_col as usize], Some(WHITE_KNIGHT));
+        // Black knight on c6
+        let (c6_col, c6_row) = get_col_and_row(C6 as u8);
+        assert_eq!(pos.pieces[c6_row as usize][c6_col as usize], Some(BLACK_KNIGHT));
+        // Black pawn on e5
+        let (e5_col, e5_row) = get_col_and_row(E5 as u8);
+        assert_eq!(pos.pieces[e5_row as usize][e5_col as usize], Some(BLACK_PAWN));
+        // e2 is empty (pawn moved to e4)
+        let (e2_col, e2_row) = get_col_and_row(E2 as u8);
+        assert!(pos.pieces[e2_row as usize][e2_col as usize].is_none());
+    }
+
+    #[test]
+    fn empty_board() {
+        let fen = "8/8/8/8/8/8/8/8 w - - 0 1";
+        let pos = parse_fen(fen).unwrap();
+        for row in 0..8 {
+            for col in 0..8 {
+                assert!(pos.pieces[row][col].is_none());
+            }
+        }
+    }
+
+    #[test]
+    fn single_king_each() {
+        let fen = "4k3/8/8/8/8/8/8/4K3 w - - 0 1";
+        let pos = parse_fen(fen).unwrap();
+        let (e1_col, e1_row) = get_col_and_row(E1 as u8);
+        let (e8_col, e8_row) = get_col_and_row(E8 as u8);
+        assert_eq!(pos.pieces[e1_row as usize][e1_col as usize], Some(WHITE_KING));
+        assert_eq!(pos.pieces[e8_row as usize][e8_col as usize], Some(BLACK_KING));
+    }
+
+    #[test]
+    fn fen_without_move_counters() {
+        // FEN with only 4 fields (no halfmove/fullmove) should still parse
+        let fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -";
+        let pos = parse_fen(fen).unwrap();
+        assert_eq!(pos.turn, PieceColor::White);
+    }
+
+    #[test]
+    fn invalid_fen_too_few_fields() {
+        assert!(parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w").is_none());
+    }
+
+    #[test]
+    fn invalid_fen_bad_color() {
+        let fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR x KQkq - 0 1";
+        assert!(parse_fen(fen).is_none());
+    }
+
+    #[test]
+    fn invalid_fen_too_few_ranks() {
+        let fen = "rnbqkbnr/pppppppp/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+        assert!(parse_fen(fen).is_none());
+    }
+
+    #[test]
+    fn invalid_fen_bad_piece_char() {
+        let fen = "rnbqkbnr/ppppXppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+        assert!(parse_fen(fen).is_none());
+    }
+
+    #[test]
+    fn invalid_fen_rank_too_wide() {
+        // 9 squares in rank 8
+        let fen = "rnbqkbnrr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+        assert!(parse_fen(fen).is_none());
+    }
+
+    #[test]
+    fn invalid_fen_rank_too_narrow() {
+        // Only 7 squares in rank 8
+        let fen = "rnbqkbn/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+        assert!(parse_fen(fen).is_none());
+    }
+
+    #[test]
+    fn fen_roundtrip_matches_start_position() {
+        // Parsing the standard start FEN should produce the same board as start_position()
+        let fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+        let from_fen = parse_fen(fen).unwrap();
+        let from_code = start_position();
+        assert_eq!(from_fen.pieces, from_code.pieces);
+        assert_eq!(from_fen.turn, from_code.turn);
+        assert_eq!(from_fen.white_short_castle, from_code.white_short_castle);
+        assert_eq!(from_fen.white_long_castle, from_code.white_long_castle);
+        assert_eq!(from_fen.black_short_castle, from_code.black_short_castle);
+        assert_eq!(from_fen.black_long_castle, from_code.black_long_castle);
+    }
+}
+
 pub mod uci_tests {
     use crate::piece::*;
     use crate::r#move::*;
