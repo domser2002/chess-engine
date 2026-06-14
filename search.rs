@@ -48,7 +48,8 @@ pub struct SearchResult {
 /// Starts at depth 1, increases depth until time runs out or max_depth is reached.
 pub fn search_with_time(position: Position, config: SearchConfig) -> SearchResult {
     let mut moves = legal_moves(position);
-    order_moves(&position, &mut moves);
+    let mut killers = [[None; 2]; 128];
+    order_moves(&position, &mut moves, 0, &killers);
     if moves.is_empty() {
         return SearchResult {
             best_move: None,
@@ -67,12 +68,20 @@ pub fn search_with_time(position: Position, config: SearchConfig) -> SearchResul
         nodes: 0,
     };
     let mut total_nodes: u64 = 0;
+    let mut best_from_prev: Option<Move> = None;
 
     // Iterative deepening: search depth 1, 2, 3, ... until time runs out
     for depth in 1..=config.max_depth {
         // Check if we still have time to search this depth
         if Instant::now() >= deadline && depth > 1 {
             break;
+        }
+
+        // PV move ordering: swap the best move from the previous iteration to the front
+        if let Some(pv_m) = best_from_prev {
+            if let Some(idx) = moves.iter().position(|&m| m == pv_m) {
+                moves.swap(0, idx);
+            }
         }
 
         let mut best = moves[0];
@@ -89,7 +98,8 @@ pub fn search_with_time(position: Position, config: SearchConfig) -> SearchResul
 
             let mut pos = position;
             let undo = make_move(&mut pos, m);
-            let score = -negamax(pos, depth - 1, MIN_SCORE, MAX_SCORE, &mut depth_nodes);
+            // Root moves are ply 0
+            let score = -negamax(pos, depth - 1, MIN_SCORE, MAX_SCORE, &mut depth_nodes, 1, &mut killers);
             unmake_move(&mut pos, m, undo);
 
             if score > best_score {
@@ -101,6 +111,7 @@ pub fn search_with_time(position: Position, config: SearchConfig) -> SearchResul
         // Only store the result if we completed the full depth search.
         // A partial result (timeout mid-depth) could be worse than a previous depth.
         if completed {
+            best_from_prev = Some(best);
             total_nodes += depth_nodes;
             best_result = SearchResult {
                 best_move: Some(best),
@@ -139,7 +150,7 @@ pub fn best_move_depth(position: Position, depth: i32) -> Option<Move> {
 
 /// Negamax with alpha-beta pruning.
 /// `nodes` is incremented for every position evaluated.
-fn negamax(position: Position, depth: i32, mut alpha: i32, beta: i32, nodes: &mut u64) -> i32 {
+fn negamax(position: Position, depth: i32, mut alpha: i32, beta: i32, nodes: &mut u64, ply: usize, killers: &mut [[Option<Move>; 2]; 128]) -> i32 {
     *nodes += 1;
 
     if depth == 0 {
@@ -147,7 +158,7 @@ fn negamax(position: Position, depth: i32, mut alpha: i32, beta: i32, nodes: &mu
     }
 
     let mut moves = legal_moves(position);
-    order_moves(&position, &mut moves);
+    order_moves(&position, &mut moves, ply, killers);
     if moves.is_empty() {
         if is_in_check(position, position.turn) {
             return MIN_SCORE + 1;
@@ -160,10 +171,16 @@ fn negamax(position: Position, depth: i32, mut alpha: i32, beta: i32, nodes: &mu
     for &m in &moves {
         let mut pos = position;
         let undo = make_move(&mut pos, m);
-        let val = -negamax(pos, depth - 1, -beta, -alpha, nodes);
+        let val = -negamax(pos, depth - 1, -beta, -alpha, nodes, ply + 1, killers);
         unmake_move(&mut pos, m, undo);
 
         if val >= beta {
+            if !m.capture && ply < 128 {
+                if killers[ply][0] != Some(m) {
+                    killers[ply][1] = killers[ply][0];
+                    killers[ply][0] = Some(m);
+                }
+            }
             return beta;
         }
         if val > score {
@@ -177,8 +194,8 @@ fn negamax(position: Position, depth: i32, mut alpha: i32, beta: i32, nodes: &mu
     score
 }
 
-/// Score a move for move ordering (MVV-LVA).
-fn score_move(position: &Position, m: &Move) -> i32 {
+/// Score a move for move ordering (MVV-LVA and Killers).
+fn score_move(position: &Position, m: &Move, ply: usize, killers: &[[Option<Move>; 2]; 128]) -> i32 {
     if m.capture {
         let (col, row) = crate::square::get_col_and_row(m.to);
         let victim_val = match position.pieces[row as usize][col as usize] {
@@ -187,13 +204,20 @@ fn score_move(position: &Position, m: &Move) -> i32 {
         };
         let attacker_val = piece_value(m.piece);
         // MVV-LVA: Most Valuable Victim - Least Valuable Attacker
-        10 * victim_val - attacker_val
+        10000 + 10 * victim_val - attacker_val
     } else {
+        if ply < 128 {
+            if killers[ply][0] == Some(*m) {
+                return 90;
+            } else if killers[ply][1] == Some(*m) {
+                return 80;
+            }
+        }
         0
     }
 }
 
 /// Order moves to improve alpha-beta pruning efficiency.
-fn order_moves(position: &Position, moves: &mut [Move]) {
-    moves.sort_unstable_by_key(|m| -score_move(position, m));
+fn order_moves(position: &Position, moves: &mut [Move], ply: usize, killers: &[[Option<Move>; 2]; 128]) {
+    moves.sort_unstable_by_key(|m| -score_move(position, m, ply, killers));
 }
