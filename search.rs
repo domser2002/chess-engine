@@ -154,7 +154,7 @@ fn negamax(position: Position, depth: i32, mut alpha: i32, beta: i32, nodes: &mu
     *nodes += 1;
 
     if depth == 0 {
-        return evaluate(position);
+        return quiescence(position, alpha, beta, nodes, ply, killers);
     }
 
     let mut moves = legal_moves(position);
@@ -181,6 +181,47 @@ fn negamax(position: Position, depth: i32, mut alpha: i32, beta: i32, nodes: &mu
                     killers[ply][0] = Some(m);
                 }
             }
+            return beta;
+        }
+        if val > score {
+            score = val;
+            if val > alpha {
+                alpha = val;
+            }
+        }
+    }
+
+    score
+}
+
+/// Quiescence search: resolves capture sequences beyond the search horizon to avoid the horizon effect.
+fn quiescence(position: Position, mut alpha: i32, beta: i32, nodes: &mut u64, ply: usize, killers: &mut [[Option<Move>; 2]; 128]) -> i32 {
+    *nodes += 1;
+
+    let stand_pat = evaluate(position);
+    if stand_pat >= beta {
+        return beta;
+    }
+    if alpha < stand_pat {
+        alpha = stand_pat;
+    }
+
+    let mut moves = legal_moves(position);
+    order_moves(&position, &mut moves, ply, killers);
+
+    let mut score = stand_pat;
+
+    for &m in &moves {
+        if !m.capture {
+            continue; // Only search captures in quiescence
+        }
+
+        let mut pos = position;
+        let undo = make_move(&mut pos, m);
+        let val = -quiescence(pos, -beta, -alpha, nodes, ply + 1, killers);
+        unmake_move(&mut pos, m, undo);
+
+        if val >= beta {
             return beta;
         }
         if val > score {
