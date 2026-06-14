@@ -1,6 +1,6 @@
 use crate::piece::*;
 use crate::r#move::{Move, SHORT_CASTLING_SQUARE, LONG_CASTLING_SQUARE};
-use crate::square::{self, *};
+use crate::square::*;
 use crate::square::Squares::*;
 use colored::*;
 

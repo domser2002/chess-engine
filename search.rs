@@ -58,7 +58,7 @@ pub fn search_with_time(position: Position, config: SearchConfig) -> SearchResul
     };
 
     // Iterative deepening: search depth 1, 2, 3, ... until time runs out
-    'outer: for depth in 1..=config.max_depth {
+    for depth in 1..=config.max_depth {
         // Check if we still have time to search this depth
         if Instant::now() >= deadline && depth > 1 {
             break;
@@ -100,12 +100,14 @@ pub fn search_with_time(position: Position, config: SearchConfig) -> SearchResul
     best_result
 }
 
-/// Search with default time and depth. Used by tests and UCI.
+/// Search with default time and depth. Used by tests.
+#[cfg(test)]
 pub fn best_move(position: Position) -> Option<Move> {
     search_with_time(position, SearchConfig::default()).best_move
 }
 
 /// Search with a fixed depth (no time limit). Used by tests.
+#[cfg(test)]
 pub fn best_move_depth(position: Position, depth: i32) -> Option<Move> {
     let config = SearchConfig {
         max_depth: depth,

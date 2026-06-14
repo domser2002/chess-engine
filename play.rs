@@ -95,7 +95,7 @@ pub fn interactive_loop() {
                                 let engine_str = print_move(engine_move);
                                 make_move(&mut position, engine_move);
                                 move_count += 1;
-                                println!("Engine move: {engine_str} (depth {})", result.depth_reached);
+                                println!("Engine move: {engine_str} (depth {}, score {})", result.depth_reached, result.score);
                                 println!();
                             }
                             None => {
