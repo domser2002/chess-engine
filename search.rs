@@ -32,6 +32,7 @@ impl Default for SearchConfig {
 }
 
 /// Result of a timed search.
+#[cfg_attr(test, allow(dead_code))]
 pub struct SearchResult {
     pub best_move: Option<Move>,
     pub depth_reached: i32,

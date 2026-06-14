@@ -5,6 +5,7 @@ use crate::piece::*;
 
 /// Run an interactive game where the user types moves in algebraic notation
 /// and the engine responds with the best move found by 1-ply search.
+#[cfg_attr(test, allow(dead_code))]
 pub fn interactive_loop() {
     let mut position = start_position();
     let mut move_count = 0;

@@ -180,6 +180,7 @@ fn fen_char_to_piece(ch: char) -> Option<Piece> {
 }
 
 
+#[cfg_attr(test, allow(dead_code))]
 fn print_colored(c: char, pc: PieceColor) {
     let text = c.to_string();
     let colored = match pc {
@@ -191,6 +192,7 @@ fn print_colored(c: char, pc: PieceColor) {
 }
 
 // this will not be unit tested as it is only for UI purpose
+#[cfg_attr(test, allow(dead_code))]
 pub fn print_position(position: Position) {
     let horizontal_line: String = std::iter::repeat('-').take(17).collect();
     for row_idx in (0..ROW_NUM).rev() {

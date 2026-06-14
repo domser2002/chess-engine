@@ -115,7 +115,7 @@ pub mod move_tests {
     use crate::piece::*;
     use crate::square::Squares::*;
     use crate::square::get_col_and_row;
-    use crate::position::{self, *};
+    use crate::position::*;
 
     #[test]
     fn rook_move_simple_square() {
@@ -374,7 +374,7 @@ pub mod move_tests {
         let (a1_col, a1_row) = get_col_and_row(A1 as u8);
         let (f6_col, f6_row) = get_col_and_row(F6 as u8);
         let (c3_col, c3_row) = get_col_and_row(C3 as u8);
-        let (c6_col, c6_row) = get_col_and_row(C6 as u8);
+        let (_c6_col, _c6_row) = get_col_and_row(C6 as u8);
         pos.pieces[a1_row as usize][a1_col as usize] = Some(WHITE_KING);
         pos.pieces[e8_row as usize][e8_col as usize] = Some(BLACK_KING);
         pos.pieces[f6_row as usize][f6_col as usize] = Some(WHITE_ROOK);
@@ -395,7 +395,7 @@ pub mod move_tests {
         let (e8_col, e8_row) = get_col_and_row(E8 as u8);
         let (c1_col, c1_row) = get_col_and_row(C1 as u8);
         let (c4_col, c4_row) = get_col_and_row(C4 as u8);
-        let (c3_col, c3_row) = get_col_and_row(C3 as u8);
+        let (_c3_col, _c3_row) = get_col_and_row(C3 as u8);
         pos.pieces[a1_row as usize][a1_col as usize] = Some(WHITE_KING);
         pos.pieces[e8_row as usize][e8_col as usize] = Some(BLACK_KING);
         pos.pieces[c1_row as usize][c1_col as usize] = Some(WHITE_ROOK);
@@ -416,7 +416,7 @@ pub mod move_tests {
         let (e8_col, e8_row) = get_col_and_row(E8 as u8);
         let (g1_col, g1_row) = get_col_and_row(G1 as u8);
         let (d2_col, d2_row) = get_col_and_row(D2 as u8);
-        let (f3_col, f3_row) = get_col_and_row(F3 as u8);
+        let (_f3_col, _f3_row) = get_col_and_row(F3 as u8);
         pos.pieces[a1_row as usize][a1_col as usize] = Some(WHITE_KING);
         pos.pieces[e8_row as usize][e8_col as usize] = Some(BLACK_KING);
         pos.pieces[g1_row as usize][g1_col as usize] = Some(WHITE_KNIGHT);
@@ -883,7 +883,7 @@ pub mod position_tests {
         let (a1_col, a1_row) = get_col_and_row(A1 as u8);
         let (a8_col, a8_row) = get_col_and_row(A8 as u8);
         let (f7_col, f7_row) = get_col_and_row(F7 as u8);
-        let (f8_col, f8_row) = get_col_and_row(F8 as u8);
+        let (_f8_col, _f8_row) = get_col_and_row(F8 as u8);
         pos.pieces[a1_row as usize][a1_col as usize] = Some(WHITE_KING);
         pos.pieces[a8_row as usize][a8_col as usize] = Some(BLACK_KING);
         pos.pieces[f7_row as usize][f7_col as usize] = Some(WHITE_PAWN);
@@ -1003,7 +1003,6 @@ pub mod eval_tests {
 pub mod fen_tests {
     use crate::piece::*;
     use crate::position::*;
-    use crate::r#move::*;
     use crate::square::Squares::*;
     use crate::square::get_col_and_row;
     use pretty_assertions::assert_eq;
@@ -1337,7 +1336,7 @@ pub mod search_tests {
         let (e8_col, e8_row) = get_col_and_row(crate::square::Squares::E8 as u8);
         let (b5_col, b5_row) = get_col_and_row(crate::square::Squares::B5 as u8);
         let (a8_col, a8_row) = get_col_and_row(crate::square::Squares::A8 as u8);
-        let (c7_col, c7_row) = get_col_and_row(crate::square::Squares::C7 as u8);
+        let (_c7_col, _c7_row) = get_col_and_row(crate::square::Squares::C7 as u8);
 
         pos.pieces[e1_row as usize][e1_col as usize] = Some(WHITE_KING);
         pos.pieces[e8_row as usize][e8_col as usize] = Some(BLACK_KING);
@@ -1354,7 +1353,7 @@ pub mod search_tests {
         let mut pos = empty_position(PieceColor::White);
         let (e1_col, e1_row) = get_col_and_row(crate::square::Squares::E1 as u8);
         let (e8_col, e8_row) = get_col_and_row(crate::square::Squares::E8 as u8);
-        let (b5_col, b5_row) = get_col_and_row(crate::square::Squares::B5 as u8);
+        let (_b5_col, _b5_row) = get_col_and_row(crate::square::Squares::B5 as u8);
         let (a4_col, a4_row) = get_col_and_row(crate::square::Squares::A4 as u8);
         let (c4_col, c4_row) = get_col_and_row(crate::square::Squares::C4 as u8);
 

@@ -93,6 +93,7 @@ pub fn get_char(p: Piece) -> Option<char> {
 
 /// Returns Unicode chess symbols for board display.
 /// All pieces (including pawns) return a character.
+#[cfg_attr(test, allow(dead_code))]
 pub fn get_unicode_char(p: Piece) -> char {
     match (p.piece_color, p.piece_type) {
         (PieceColor::White, PieceType::King)   => '♔',
