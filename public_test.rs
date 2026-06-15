@@ -1315,7 +1315,7 @@ pub mod search_tests {
     fn node_counter_is_nonzero() {
         let pos = start_position();
         let config = SearchConfig { max_depth: 2, time_per_move_ms: 60_000, uci_output: false };
-        let result = search_with_time(pos, config);
+        let result = search_with_time(pos, config, no_stop());
         assert!(result.nodes > 0, "Search must count at least one node");
     }
 
@@ -1324,8 +1324,8 @@ pub mod search_tests {
         let pos = start_position();
         let config_silent = SearchConfig { max_depth: 3, time_per_move_ms: 60_000, uci_output: false };
         let config_uci = SearchConfig { max_depth: 3, time_per_move_ms: 60_000, uci_output: true };
-        let result_silent = search_with_time(pos, config_silent);
-        let result_uci = search_with_time(pos, config_uci);
+        let result_silent = search_with_time(pos, config_silent, no_stop());
+        let result_uci = search_with_time(pos, config_uci, no_stop());
         assert_eq!(result_silent.best_move, result_uci.best_move);
         assert_eq!(result_silent.score, result_uci.score);
         assert_eq!(result_silent.nodes, result_uci.nodes);
@@ -1340,15 +1340,15 @@ pub mod search_tests {
         // Verify it's actually stalemate (no legal moves for black)
         assert!(moves.is_empty());
         let config = SearchConfig { max_depth: 5, time_per_move_ms: 60_000, uci_output: false };
-        let result = search_with_time(pos, config);
+        let result = search_with_time(pos, config, no_stop());
         assert_eq!(result.nodes, 0);
     }
 
     #[test]
     fn node_counter_increases_with_depth() {
         let pos = parse_fen("4k3/8/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ - 0 1").unwrap();
-        let result_d1 = search_with_time(pos, SearchConfig { max_depth: 1, time_per_move_ms: 60_000, uci_output: false });
-        let result_d3 = search_with_time(pos, SearchConfig { max_depth: 3, time_per_move_ms: 60_000, uci_output: false });
+        let result_d1 = search_with_time(pos, SearchConfig { max_depth: 1, time_per_move_ms: 60_000, uci_output: false }, no_stop());
+        let result_d3 = search_with_time(pos, SearchConfig { max_depth: 3, time_per_move_ms: 60_000, uci_output: false }, no_stop());
         assert!(
             result_d3.nodes > result_d1.nodes,
             "Depth 3 ({} nodes) should search more nodes than depth 1 ({} nodes)",
@@ -1464,7 +1464,7 @@ pub mod search_tests {
 
         // Black to move. Queen under attack by pawn on e7.
         // Depth 3 is instant and should see the hanging queen.
-        let result = search_with_time(pos, SearchConfig { max_depth: 3, time_per_move_ms: 30_000, uci_output: false });
+        let result = search_with_time(pos, SearchConfig { max_depth: 3, time_per_move_ms: 30_000, uci_output: false }, no_stop());
         let m = result.best_move.unwrap();
         // The engine must save the queen. It can either move the queen away,
         // or capture the attacking pawn on e7 with any piece (K, Q, B, or N).

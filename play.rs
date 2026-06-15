@@ -90,7 +90,7 @@ pub fn interactive_loop() {
 
                         // Engine's turn — iterative deepening with time management
                         let config = Default::default();
-                        let result = crate::search::search_with_time(position, config);
+                        let result = crate::search::search_with_time(position, config, crate::search::no_stop());
                         match result.best_move {
                             Some(engine_move) => {
                                 let engine_str = print_move(engine_move);

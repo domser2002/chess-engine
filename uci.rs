@@ -1,17 +1,17 @@
 use std::io::{self, BufRead, Write};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::thread::{self, JoinHandle};
 use crate::piece::*;
 use crate::position::{self, *};
 use crate::r#move::*;
 
-/// Run the UCI protocol loop — reads commands from stdin until "quit".
+/// Run the UCI protocol loop — reads commands from stdin until "quit" or EOF.
 pub fn uci_loop() {
     let stdin = io::stdin();
     let mut position = start_position();
-
-    println!("id name chess-engine");
-    println!("id author domser");
-    println!("uciok");
-    io::stdout().flush().unwrap();
+    let stop = Arc::new(AtomicBool::new(false));
+    let mut search_handle: Option<JoinHandle<()>> = None;
 
     for line in stdin.lock().lines() {
         let line = match line {
@@ -20,7 +20,15 @@ pub fn uci_loop() {
         };
         let trimmed = line.trim();
 
+        if trimmed.is_empty() {
+            continue;
+        }
+
         if trimmed == "quit" {
+            stop.store(true, Ordering::Relaxed);
+            if let Some(handle) = search_handle.take() {
+                let _ = handle.join();
+            }
             break;
         }
 
@@ -43,21 +51,44 @@ pub fn uci_loop() {
             continue;
         }
 
+        if trimmed == "stop" {
+            stop.store(true, Ordering::Relaxed);
+            if let Some(handle) = search_handle.take() {
+                let _ = handle.join();
+            }
+            continue;
+        }
+
         if trimmed.starts_with("position") {
             parse_position(&mut position, trimmed);
             continue;
         }
 
         if trimmed == "go" || trimmed.starts_with("go ") {
-            // Parse go parameters
+            // Wait for any previous search to finish
+            if let Some(handle) = search_handle.take() {
+                let _ = handle.join();
+            }
+
+            stop.store(false, Ordering::Relaxed);
+
             use crate::search::SearchConfig;
             let mut config = SearchConfig::default();
             config.uci_output = true;
 
             if let Some(params) = trimmed.strip_prefix("go ") {
                 let tokens: Vec<&str> = params.split_whitespace().collect();
+                let mut is_infinite = false;
                 for (i, token) in tokens.iter().enumerate() {
                     match *token {
+                        "infinite" => {
+                            is_infinite = true;
+                        }
+                        "movetime" => {
+                            if let Some(val) = tokens.get(i + 1).and_then(|s| s.parse::<u64>().ok()) {
+                                config.time_per_move_ms = val;
+                            }
+                        }
                         "wtime" => {
                             if let Some(val) = tokens.get(i + 1).and_then(|s| s.parse::<u64>().ok()) {
                                 if position.turn == PieceColor::White {
@@ -81,21 +112,36 @@ pub fn uci_loop() {
                         _ => {}
                     }
                 }
+                if is_infinite {
+                    // Effectively infinite — engine searches until `stop` is received
+                    config.time_per_move_ms = u64::MAX / 2;
+                }
             }
 
-            let result = crate::search::search_with_time(position, config);
-            match result.best_move {
-                Some(m) => {
-                    let uci_str = move_to_uci(m);
-                    println!("bestmove {uci_str}");
+            let pos = position; // Position is Copy
+            let stop_clone = stop.clone();
+            search_handle = Some(thread::spawn(move || {
+                let result = crate::search::search_with_time(pos, config, stop_clone);
+                match result.best_move {
+                    Some(m) => {
+                        let uci_str = move_to_uci(m);
+                        println!("bestmove {uci_str}");
+                    }
+                    None => {
+                        println!("bestmove 0000");
+                    }
                 }
-                None => {
-                    println!("bestmove 0000");
-                }
-            }
-            io::stdout().flush().unwrap();
+                io::stdout().flush().unwrap();
+            }));
             continue;
         }
+
+        // Unknown commands are silently ignored (per UCI spec)
+    }
+
+    // If stdin closed (EOF), wait for any running search to finish
+    if let Some(handle) = search_handle.take() {
+        let _ = handle.join();
     }
 }
 

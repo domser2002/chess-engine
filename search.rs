@@ -1,4 +1,6 @@
 use std::io::{self, Write};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 use crate::eval::{evaluate, piece_value};
 use crate::position::{is_in_check, legal_moves, capture_moves, make_move, unmake_move, Position};
@@ -45,8 +47,8 @@ pub struct SearchResult {
 }
 
 /// Find the best move using iterative deepening with time management.
-/// Starts at depth 1, increases depth until time runs out or max_depth is reached.
-pub fn search_with_time(position: Position, config: SearchConfig) -> SearchResult {
+/// Starts at depth 1, increases depth until time runs out, max_depth is reached, or `stop` is set.
+pub fn search_with_time(position: Position, config: SearchConfig, stop: Arc<AtomicBool>) -> SearchResult {
     let mut moves = legal_moves(position);
     let mut killers = [[None; 2]; 128];
     order_moves(&position, &mut moves, 0, &killers);
@@ -70,10 +72,10 @@ pub fn search_with_time(position: Position, config: SearchConfig) -> SearchResul
     let mut total_nodes: u64 = 0;
     let mut best_from_prev: Option<Move> = None;
 
-    // Iterative deepening: search depth 1, 2, 3, ... until time runs out
+    // Iterative deepening: search depth 1, 2, 3, ... until time runs out or stop is signalled
     for depth in 1..=config.max_depth {
         // Check if we still have time to search this depth
-        if Instant::now() >= deadline && depth > 1 {
+        if (Instant::now() >= deadline || stop.load(Ordering::Relaxed)) && depth > 1 {
             break;
         }
 
@@ -90,8 +92,8 @@ pub fn search_with_time(position: Position, config: SearchConfig) -> SearchResul
         let mut completed = true;
 
         for &m in &moves {
-            // Check time periodically (at each root move)
-            if Instant::now() >= deadline && depth > 1 {
+            // Check time and stop flag periodically (at each root move)
+            if (Instant::now() >= deadline || stop.load(Ordering::Relaxed)) && depth > 1 {
                 completed = false;
                 break;
             }
@@ -133,10 +135,15 @@ pub fn search_with_time(position: Position, config: SearchConfig) -> SearchResul
     best_result
 }
 
+/// Create a stop flag that is never triggered (for non-UCI use).
+pub fn no_stop() -> Arc<AtomicBool> {
+    Arc::new(AtomicBool::new(false))
+}
+
 /// Search with default time and depth. Used by tests.
 #[cfg(test)]
 pub fn best_move(position: Position) -> Option<Move> {
-    search_with_time(position, SearchConfig::default()).best_move
+    search_with_time(position, SearchConfig::default(), no_stop()).best_move
 }
 
 /// Search with a fixed depth (no time limit). Used by tests.
@@ -147,7 +154,7 @@ pub fn best_move_depth(position: Position, depth: i32) -> Option<Move> {
         time_per_move_ms: 60_000,
         uci_output: false,
     };
-    search_with_time(position, config).best_move
+    search_with_time(position, config, no_stop()).best_move
 }
 
 /// Negamax with alpha-beta pruning.
