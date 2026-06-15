@@ -35,6 +35,20 @@ Plays real chess with alpha-beta search, iterative deepening, and time managemen
 - ✅ Zero compilation warnings
 - ✅ 114 unit tests (up from 65)
 
+## v0.4.1
+
+Massive performance leap and full GUI compatibility. Engine can now confidently hit depths 7-9 within a few seconds and works seamlessly in professional chess interfaces.
+
+- ✅ Move sorting — evaluates captures first, vastly improving alpha-beta pruning efficiency
+- ✅ Killer moves heuristic — stores the last two moves that caused a beta cutoff at each ply and evaluates them early
+- ✅ Check extensions — extends search depth by 1 ply when in check to avoid horizon effect blunders
+- ✅ Node counting & progress logging — accurate profiling metric to measure search efficiency
+- ✅ Full UCI compatibility — threaded communication loop, `stop` support, and outputting the principal variation (`pv`) token required by modern GUIs
+- ✅ Dynamic time management — sophisticated game clock calculation from `wtime`, `btime`, `winc`, `binc`, and `movestogo` parameters
+- ✅ Test suite FEN refactoring — entirely replaced verbose 15-line manual board setups with 1-line FEN strings
+- ✅ Tactical test suite — new tests covering forks, pins, skewers, and forced mates to guarantee search correctness
+- ✅ 124 unit tests (up from 114)
+
 ## How to Play
 
 ### Interactive mode (terminal)
