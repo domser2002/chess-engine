@@ -72,7 +72,8 @@ pub fn search_with_time(position: Position, config: SearchConfig, stop: Arc<Atom
     let mut tt = crate::tt::TranspositionTable::new(16);
     let mut moves = legal_moves(position);
     let mut killers = [[None; 2]; 128];
-    order_moves(&position, &mut moves, 0, &killers, None);
+    let mut history = [[0; 70]; 70];
+    order_moves(&position, &mut moves, 0, &killers, &history, None);
     if moves.is_empty() {
         return SearchResult {
             best_move: None,
@@ -120,7 +121,7 @@ pub fn search_with_time(position: Position, config: SearchConfig, stop: Arc<Atom
 
             let mut pos = position;
             let undo = make_move(&mut pos, m);
-            let score = -negamax(pos, depth - 1, -MAX_SCORE, -alpha, &mut total_nodes, 1, &mut killers, &mut tt);
+            let score = -negamax(pos, depth - 1, -MAX_SCORE, -alpha, &mut total_nodes, 1, &mut killers, &mut history, &mut tt);
             unmake_move(&mut pos, m, undo);
 
             if score > best_score {
@@ -187,7 +188,7 @@ pub fn best_move_depth(position: Position, depth: i32) -> Option<Move> {
 
 /// Negamax with alpha-beta pruning.
 /// `nodes` is incremented for every position evaluated.
-fn negamax(position: Position, depth: i32, mut alpha: i32, beta: i32, nodes: &mut u64, ply: usize, killers: &mut [[Option<Move>; 2]; 128], tt: &mut crate::tt::TranspositionTable) -> i32 {
+fn negamax(position: Position, depth: i32, mut alpha: i32, beta: i32, nodes: &mut u64, ply: usize, killers: &mut [[Option<Move>; 2]; 128], history: &mut [[i32; 70]; 70], tt: &mut crate::tt::TranspositionTable) -> i32 {
     *nodes += 1;
 
     if depth == 0 {
@@ -224,7 +225,7 @@ fn negamax(position: Position, depth: i32, mut alpha: i32, beta: i32, nodes: &mu
         let undo = pos.make_null_move();
         
         let r = 2; // Depth reduction for null move
-        let val = -negamax(pos, depth - 1 - r, -beta, -beta + 1, nodes, ply + 1, killers, tt);
+        let val = -negamax(pos, depth - 1 - r, -beta, -beta + 1, nodes, ply + 1, killers, history, tt);
         
         pos.unmake_null_move(undo);
         
@@ -234,7 +235,7 @@ fn negamax(position: Position, depth: i32, mut alpha: i32, beta: i32, nodes: &mu
     }
 
     let mut moves = legal_moves(position);
-    order_moves(&position, &mut moves, ply, killers, tt_move);
+    order_moves(&position, &mut moves, ply, killers, history, tt_move);
     if moves.is_empty() {
         if in_check {
             // Favor faster mates by subtracting ply
@@ -253,15 +254,19 @@ fn negamax(position: Position, depth: i32, mut alpha: i32, beta: i32, nodes: &mu
     for &m in &moves {
         let mut pos = position;
         let undo = make_move(&mut pos, m);
-        let val = -negamax(pos, depth - 1 + extension, -beta, -alpha, nodes, ply + 1, killers, tt);
+        let val = -negamax(pos, depth - 1 + extension, -beta, -alpha, nodes, ply + 1, killers, history, tt);
         unmake_move(&mut pos, m, undo);
 
         if val >= beta {
-            if !m.capture && ply < 128
-                && killers[ply][0] != Some(m) {
+            if !m.capture {
+                if ply < 128 && killers[ply][0] != Some(m) {
                     killers[ply][1] = killers[ply][0];
                     killers[ply][0] = Some(m);
                 }
+                let bonus = depth * depth;
+                let v = &mut history[m.from as usize][m.to as usize];
+                *v = v.saturating_add(bonus);
+            }
             tt.store(position.hash, depth as u8, crate::tt::TTFlag::Beta, store_score(beta, ply), Some(m));
             return beta;
         }
@@ -297,7 +302,8 @@ fn quiescence(position: Position, mut alpha: i32, beta: i32, nodes: &mut u64, pl
     }
 
     let mut moves = capture_moves(position);
-    order_moves(&position, &mut moves, ply, killers, None);
+    static EMPTY_HISTORY: [[i32; 70]; 70] = [[0; 70]; 70];
+    order_moves(&position, &mut moves, ply, killers, &EMPTY_HISTORY, None);
 
     let mut score = stand_pat;
 
@@ -322,7 +328,7 @@ fn quiescence(position: Position, mut alpha: i32, beta: i32, nodes: &mut u64, pl
 }
 
 /// Score a move for move ordering (MVV-LVA and Killers).
-fn score_move(position: &Position, m: &Move, ply: usize, killers: &[[Option<Move>; 2]; 128], tt_move: Option<Move>) -> i32 {
+fn score_move(position: &Position, m: &Move, ply: usize, killers: &[[Option<Move>; 2]; 128], history: &[[i32; 70]; 70], tt_move: Option<Move>) -> i32 {
     if Some(*m) == tt_move {
         return 10_000_000;
     }
@@ -334,20 +340,20 @@ fn score_move(position: &Position, m: &Move, ply: usize, killers: &[[Option<Move
         };
         let attacker_val = piece_value(m.piece);
         // MVV-LVA: Most Valuable Victim - Least Valuable Attacker
-        10000 + 10 * victim_val - attacker_val
+        1_000_000 + 10 * victim_val - attacker_val
     } else {
         if ply < 128 {
             if killers[ply][0] == Some(*m) {
-                return 90;
+                return 900_000;
             } else if killers[ply][1] == Some(*m) {
-                return 80;
+                return 800_000;
             }
         }
-        0
+        history[m.from as usize][m.to as usize]
     }
 }
 
 /// Order moves to improve alpha-beta pruning efficiency.
-fn order_moves(position: &Position, moves: &mut [Move], ply: usize, killers: &[[Option<Move>; 2]; 128], tt_move: Option<Move>) {
-    moves.sort_unstable_by_key(|m| -score_move(position, m, ply, killers, tt_move));
+fn order_moves(position: &Position, moves: &mut [Move], ply: usize, killers: &[[Option<Move>; 2]; 128], history: &[[i32; 70]; 70], tt_move: Option<Move>) {
+    moves.sort_unstable_by_key(|m| -score_move(position, m, ply, killers, history, tt_move));
 }
