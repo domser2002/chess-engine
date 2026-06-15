@@ -1190,7 +1190,7 @@ pub mod search_tests {
     #[test]
     fn node_counter_is_nonzero() {
         let pos = start_position();
-        let config = SearchConfig { max_depth: 2, time_per_move_ms: 60_000, uci_output: false };
+        let config = SearchConfig { max_depth: 2, time_per_move_ms: 60_000, uci_output: false, multi_pv: 1 };
         let result = search_with_time(pos, config, no_stop());
         assert!(result.nodes > 0, "Search must count at least one node");
     }
@@ -1198,8 +1198,8 @@ pub mod search_tests {
     #[test]
     fn uci_output_does_not_affect_result() {
         let pos = start_position();
-        let config_silent = SearchConfig { max_depth: 3, time_per_move_ms: 60_000, uci_output: false };
-        let config_uci = SearchConfig { max_depth: 3, time_per_move_ms: 60_000, uci_output: true };
+        let config_silent = SearchConfig { max_depth: 3, time_per_move_ms: 60_000, uci_output: false, multi_pv: 1 };
+        let config_uci = SearchConfig { max_depth: 3, time_per_move_ms: 60_000, uci_output: true, multi_pv: 1 };
         let result_silent = search_with_time(pos, config_silent, no_stop());
         let result_uci = search_with_time(pos, config_uci, no_stop());
         assert_eq!(result_silent.best_move, result_uci.best_move);
@@ -1215,7 +1215,7 @@ pub mod search_tests {
         let moves = legal_moves(pos);
         // Verify it's actually stalemate (no legal moves for black)
         assert!(moves.is_empty());
-        let config = SearchConfig { max_depth: 5, time_per_move_ms: 60_000, uci_output: false };
+        let config = SearchConfig { max_depth: 5, time_per_move_ms: 60_000, uci_output: false, multi_pv: 1 };
         let result = search_with_time(pos, config, no_stop());
         assert_eq!(result.nodes, 0);
     }
@@ -1223,8 +1223,8 @@ pub mod search_tests {
     #[test]
     fn node_counter_increases_with_depth() {
         let pos = parse_fen("4k3/8/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ - 0 1").unwrap();
-        let result_d1 = search_with_time(pos, SearchConfig { max_depth: 1, time_per_move_ms: 60_000, uci_output: false }, no_stop());
-        let result_d3 = search_with_time(pos, SearchConfig { max_depth: 3, time_per_move_ms: 60_000, uci_output: false }, no_stop());
+        let result_d1 = search_with_time(pos, SearchConfig { max_depth: 1, time_per_move_ms: 60_000, uci_output: false, multi_pv: 1 }, no_stop());
+        let result_d3 = search_with_time(pos, SearchConfig { max_depth: 3, time_per_move_ms: 60_000, uci_output: false, multi_pv: 1 }, no_stop());
         assert!(
             result_d3.nodes > result_d1.nodes,
             "Depth 3 ({} nodes) should search more nodes than depth 1 ({} nodes)",
@@ -1298,7 +1298,7 @@ pub mod search_tests {
 
         // Black to move. Queen under attack by pawn on e7.
         // Depth 3 is instant and should see the hanging queen.
-        let result = search_with_time(pos, SearchConfig { max_depth: 3, time_per_move_ms: 30_000, uci_output: false }, no_stop());
+        let result = search_with_time(pos, SearchConfig { max_depth: 3, time_per_move_ms: 30_000, uci_output: false, multi_pv: 1 }, no_stop());
         let m = result.best_move.unwrap();
         // The engine must save the queen. It can either move the queen away,
         // or capture the attacking pawn on e7 with any piece (K, Q, B, or N).
@@ -1370,5 +1370,60 @@ pub mod tactics_tests {
         let m = get_best_move(fen, 4);
         assert_eq!(m.from, Squares::H6 as u8);
         assert_eq!(m.to, Squares::H7 as u8);
+    }
+    #[test]
+    fn search_with_multi_pv_evaluates_more_nodes() {
+        use crate::position::start_position;
+        use crate::search::{search_with_time, SearchConfig, no_stop};
+        let pos = start_position();
+        
+        let config_single = SearchConfig { max_depth: 3, time_per_move_ms: 60_000, uci_output: false, multi_pv: 1 };
+        let config_multi = SearchConfig { max_depth: 3, time_per_move_ms: 60_000, uci_output: false, multi_pv: 2 };
+        
+        let result_single = search_with_time(pos, config_single, no_stop());
+        let result_multi = search_with_time(pos, config_multi, no_stop());
+        
+        assert!(result_multi.nodes > result_single.nodes, "MultiPV should evaluate more nodes");
+    }
+}
+
+#[cfg(test)]
+mod tt_tests {
+    use crate::tt::{TranspositionTable, TTFlag};
+
+    #[test]
+    fn test_tt_resize() {
+        let mut tt = TranspositionTable::new(1);
+        tt.store(12345, 5, TTFlag::Exact, 100, None);
+        assert!(tt.probe(12345).is_some());
+        
+        // Resize should allocate a new vector, effectively clearing it
+        tt.resize(2);
+        assert!(tt.probe(12345).is_none());
+    }
+
+    #[test]
+    fn test_tt_clear() {
+        let mut tt = TranspositionTable::new(1);
+        tt.store(12345, 5, TTFlag::Exact, 100, None);
+        assert!(tt.probe(12345).is_some());
+        
+        tt.clear();
+        assert!(tt.probe(12345).is_none());
+    }
+
+    #[test]
+    fn test_tt_hashfull() {
+        let mut tt = TranspositionTable::new(1);
+        assert_eq!(tt.hashfull(), 0);
+        
+        // Fill some entries
+        for i in 1..=500 {
+            tt.store(i as u64, 1, TTFlag::Exact, 0, None);
+        }
+        
+        let hashfull = tt.hashfull();
+        assert!(hashfull > 0);
+        assert!(hashfull <= 1000);
     }
 }

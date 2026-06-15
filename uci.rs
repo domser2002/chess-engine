@@ -12,6 +12,8 @@ pub fn uci_loop() {
     let mut position = start_position();
     let stop = Arc::new(AtomicBool::new(false));
     let mut search_handle: Option<JoinHandle<()>> = None;
+    let tt = Arc::new(std::sync::RwLock::new(crate::tt::TranspositionTable::new(16)));
+    let mut multi_pv_setting = 1;
 
     let mut log_file = std::fs::OpenOptions::new()
         .create(true)
@@ -45,6 +47,8 @@ pub fn uci_loop() {
         if trimmed == "uci" {
             println!("id name chess-engine");
             println!("id author domser");
+            println!("option name Hash type spin default 16 min 1 max 1048576");
+            println!("option name MultiPV type spin default 1 min 1 max 500");
             println!("uciok");
             writeln!(log_file, "< id name chess-engine").ok();
             writeln!(log_file, "< id author domser").ok();
@@ -62,6 +66,21 @@ pub fn uci_loop() {
 
         if trimmed == "ucinewgame" {
             position = start_position();
+            tt.write().unwrap().clear();
+            continue;
+        }
+
+        if trimmed.starts_with("setoption name Hash value ") {
+            if let Ok(mb) = trimmed["setoption name Hash value ".len()..].parse::<usize>() {
+                tt.write().unwrap().resize(mb);
+            }
+            continue;
+        }
+
+        if trimmed.starts_with("setoption name MultiPV value ") {
+            if let Ok(pv) = trimmed["setoption name MultiPV value ".len()..].parse::<usize>() {
+                multi_pv_setting = pv.max(1);
+            }
             continue;
         }
 
@@ -89,6 +108,7 @@ pub fn uci_loop() {
             use crate::search::SearchConfig;
             let mut config = SearchConfig::default();
             config.uci_output = true;
+            config.multi_pv = multi_pv_setting;
 
             if let Some(params) = trimmed.strip_prefix("go ") {
                 let tokens: Vec<&str> = params.split_whitespace().collect();
@@ -150,8 +170,10 @@ pub fn uci_loop() {
 
             let pos = position; // Position is Copy
             let stop_clone = stop.clone();
+            let tt_clone = Arc::clone(&tt);
             search_handle = Some(thread::spawn(move || {
-                let result = crate::search::search_with_time(pos, config, stop_clone);
+                let mut tt_guard = tt_clone.write().unwrap();
+                let result = crate::search::search_with_time_and_tt(pos, config, stop_clone, &mut tt_guard);
                 let uci_str = match result.best_move {
                     Some(m) => move_to_uci(m),
                     None => "0000".to_string(),

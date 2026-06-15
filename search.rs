@@ -45,6 +45,8 @@ pub struct SearchConfig {
     pub max_depth: i32,
     /// If true, print UCI `info` lines after each completed depth.
     pub uci_output: bool,
+    /// Number of best lines to search (MultiPV).
+    pub multi_pv: usize,
 }
 
 impl Default for SearchConfig {
@@ -53,6 +55,7 @@ impl Default for SearchConfig {
             time_per_move_ms: DEFAULT_MOVE_TIME_SECS * 1000,
             max_depth: DEFAULT_DEPTH,
             uci_output: false,
+            multi_pv: 1,
         }
     }
 }
@@ -70,6 +73,10 @@ pub struct SearchResult {
 /// Starts at depth 1, increases depth until time runs out, `max_depth` is reached, or `stop` is set.
 pub fn search_with_time(position: Position, config: SearchConfig, stop: Arc<AtomicBool>) -> SearchResult {
     let mut tt = crate::tt::TranspositionTable::new(16);
+    search_with_time_and_tt(position, config, stop, &mut tt)
+}
+
+pub fn search_with_time_and_tt(position: Position, config: SearchConfig, stop: Arc<AtomicBool>, tt: &mut crate::tt::TranspositionTable) -> SearchResult {
     let mut moves = legal_moves(position);
     let mut killers = [[None; 2]; 128];
     let mut history = [[0; 70]; 70];
@@ -92,7 +99,7 @@ pub fn search_with_time(position: Position, config: SearchConfig, stop: Arc<Atom
         nodes: 0,
     };
     let mut total_nodes: u64 = 0;
-    let mut best_from_prev: Option<Move> = None;
+    let mut multi_pv_results: Vec<Move> = Vec::new();
 
     // Iterative deepening: search depth 1, 2, 3, ... until time runs out or stop is signalled
     for depth in 1..=config.max_depth {
@@ -101,53 +108,101 @@ pub fn search_with_time(position: Position, config: SearchConfig, stop: Arc<Atom
             break;
         }
 
-        // PV move ordering: swap the best move from the previous iteration to the front
-        if let Some(pv_m) = best_from_prev
-            && let Some(idx) = moves.iter().position(|&m| m == pv_m) {
-                moves.swap(0, idx);
-            }
+        let mut excluded_moves = Vec::new();
+        let mut iteration_completed = true;
 
-        let mut best = moves[0];
-        let mut best_score = MIN_SCORE;
-        let mut alpha = MIN_SCORE;
-        let mut completed = true;
-
-        for &m in &moves {
-            // Check time and stop flag periodically (at each root move)
+        for pv_idx in 0..config.multi_pv.min(moves.len()) {
             if (Instant::now() >= deadline || stop.load(Ordering::Relaxed)) && depth > 1 {
-                completed = false;
+                iteration_completed = false;
                 break;
             }
 
-            let mut pos = position;
-            let undo = make_move(&mut pos, m);
-            let score = -negamax(pos, depth - 1, -MAX_SCORE, -alpha, &mut total_nodes, 1, &mut killers, &mut history, &mut tt);
-            unmake_move(&mut pos, m, undo);
-
-            if score > best_score {
-                best_score = score;
-                best = m;
-                if score > alpha {
-                    alpha = score;
+            // PV move ordering: swap the best move from the previous iteration to the front
+            if let Some(&prev_pv) = multi_pv_results.get(pv_idx) {
+                if let Some(idx) = moves.iter().position(|&m| m == prev_pv) {
+                    moves.swap(0, idx);
                 }
             }
-        }
 
-        // Only store the result if we completed the full depth search.
-        // A partial result (timeout mid-depth) could be worse than a previous depth.
-        if completed {
-            best_from_prev = Some(best);
-            best_result = SearchResult {
-                best_move: Some(best),
-                depth_reached: depth,
-                score: best_score,
-                nodes: total_nodes,
-            };
+            let mut best = moves.iter().find(|m| !excluded_moves.contains(*m)).copied().unwrap_or(moves[0]);
+            let mut best_score = MIN_SCORE;
+            let mut alpha = MIN_SCORE;
+
+            for &m in &moves {
+                if excluded_moves.contains(&m) {
+                    continue;
+                }
+
+                // Check time and stop flag periodically (at each root move)
+                if (Instant::now() >= deadline || stop.load(Ordering::Relaxed)) && depth > 1 {
+                    iteration_completed = false;
+                    break;
+                }
+
+                let mut pos = position;
+                let undo = make_move(&mut pos, m);
+                let score = -negamax(pos, depth - 1, -MAX_SCORE, -alpha, &mut total_nodes, 1, &mut killers, &mut history, tt);
+                unmake_move(&mut pos, m, undo);
+
+                if score > best_score {
+                    best_score = score;
+                    best = m;
+                    if score > alpha {
+                        alpha = score;
+                    }
+                }
+            }
+
+            if !iteration_completed {
+                break;
+            }
+
+            excluded_moves.push(best);
+
+            if pv_idx == 0 {
+                best_result = SearchResult {
+                    best_move: Some(best),
+                    depth_reached: depth,
+                    score: best_score,
+                    nodes: total_nodes,
+                };
+            }
 
             if config.uci_output {
-                let elapsed_ms = start.elapsed().as_millis();
-                let pv_str = crate::uci::move_to_uci(best);
-                let info_msg = format!("info depth {depth} score cp {best_score} nodes {total_nodes} time {elapsed_ms} pv {pv_str}");
+                let elapsed_ms = start.elapsed().as_millis().max(1) as u64;
+                let nps = (total_nodes * 1000) / elapsed_ms;
+
+                let score_str = if best_score > MATE_BOUND - 100 {
+                    format!("mate {}", (MAX_SCORE - best_score + 1) / 2)
+                } else if best_score < -MATE_BOUND + 100 {
+                    format!("mate -{}", (MAX_SCORE + best_score) / 2)
+                } else {
+                    format!("cp {}", best_score)
+                };
+
+                let mut pv_str = crate::uci::move_to_uci(best);
+                let mut pv_pos = position;
+                let mut pv_depth = depth - 1;
+                let mut current_move = best;
+                let mut visited_hashes = vec![pv_pos.hash];
+
+                while pv_depth > 0 {
+                    let _undo = make_move(&mut pv_pos, current_move);
+                    if visited_hashes.contains(&pv_pos.hash) { break; }
+                    visited_hashes.push(pv_pos.hash);
+
+                    if let Some(entry) = tt.probe(pv_pos.hash) {
+                        if let Some(m) = entry.best_move {
+                            pv_str.push_str(&format!(" {}", crate::uci::move_to_uci(m)));
+                            current_move = m;
+                            pv_depth -= 1;
+                            continue;
+                        }
+                    }
+                    break;
+                }
+
+                let info_msg = format!("info depth {depth} multipv {} score {score_str} nodes {total_nodes} nps {nps} hashfull {} time {elapsed_ms} pv {pv_str}", pv_idx + 1, tt.hashfull());
                 println!("{info_msg}");
                 io::stdout().flush().unwrap();
                 let mut log_file = std::fs::OpenOptions::new()
@@ -157,6 +212,10 @@ pub fn search_with_time(position: Position, config: SearchConfig, stop: Arc<Atom
                     .unwrap_or_else(|_| std::fs::File::create("/dev/null").unwrap());
                 std::io::Write::write_fmt(&mut log_file, format_args!("< {info_msg}\n")).ok();
             }
+        }
+
+        if iteration_completed {
+            multi_pv_results = excluded_moves;
         }
     }
 
@@ -182,6 +241,7 @@ pub fn best_move_depth(position: Position, depth: i32) -> Option<Move> {
         max_depth: depth,
         time_per_move_ms: 60_000,
         uci_output: false,
+        multi_pv: 1,
     };
     search_with_time(position, config, no_stop()).best_move
 }
