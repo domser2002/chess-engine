@@ -1316,8 +1316,10 @@ pub mod tactics_tests {
 
     fn get_best_move(fen: &str, depth: i32) -> crate::r#move::Move {
         let pos = parse_fen(fen).unwrap();
-        let mut config = SearchConfig::default();
-        config.max_depth = depth;
+        let config = SearchConfig {
+            max_depth: depth,
+            ..Default::default()
+        };
         let result = search_with_time(pos, config, no_stop());
         result.best_move.unwrap()
     }

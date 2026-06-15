@@ -11,6 +11,7 @@ mod bench;
 #[cfg(test)]
 mod public_test;
 
+#[cfg(not(test))]
 use std::env;
 
 fn main() {

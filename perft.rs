@@ -20,6 +20,7 @@ pub fn perft(pos: &mut Position, depth: u8) -> u64 {
     nodes
 }
 
+#[allow(dead_code)]
 pub fn divide(pos: &mut Position, depth: u8) {
     println!("--- Perft Depth {depth} ---");
     let start_time = Instant::now();
@@ -37,7 +38,9 @@ pub fn divide(pos: &mut Position, depth: u8) {
     
     let duration = start_time.elapsed();
     let nps = if duration.as_secs_f64() > 0.0 {
-        total_nodes as f64 / duration.as_secs_f64()
+        #[allow(clippy::cast_precision_loss)]
+        let nodes_f64 = total_nodes as f64;
+        nodes_f64 / duration.as_secs_f64()
     } else {
         0.0
     };
@@ -47,6 +50,7 @@ pub fn divide(pos: &mut Position, depth: u8) {
     println!("NPS: {nps:.0}");
 }
 
+#[allow(dead_code)]
 pub fn run_perft_command(depth: u8) {
     let mut pos = start_position();
     divide(&mut pos, depth);
@@ -63,7 +67,7 @@ mod tests {
         assert_eq!(perft(&mut pos, 1), 20);
         assert_eq!(perft(&mut pos, 2), 400);
         assert_eq!(perft(&mut pos, 3), 8902);
-        assert_eq!(perft(&mut pos, 4), 197281);
+        assert_eq!(perft(&mut pos, 4), 197_281);
     }
 
     #[test]

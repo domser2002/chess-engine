@@ -2,8 +2,9 @@ use std::time::Instant;
 use crate::position::{parse_fen, start_position};
 use crate::search::{search_with_time, SearchConfig, no_stop};
 
+#[allow(dead_code)]
 pub fn run_bench_command(depth: u8) {
-    let fens = vec![
+    let fens = [
         "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", // Start position
         "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1", // Kiwipete
         "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1", // Position 3
@@ -23,9 +24,11 @@ pub fn run_bench_command(depth: u8) {
             parse_fen(fen).unwrap()
         };
 
-        let mut config = SearchConfig::default();
-        config.max_depth = i32::from(depth);
-        config.uci_output = false;
+        let config = SearchConfig {
+            max_depth: i32::from(depth),
+            uci_output: false,
+            ..Default::default()
+        };
         
         let result = search_with_time(pos, config, no_stop());
         total_nodes += result.nodes;
@@ -35,7 +38,9 @@ pub fn run_bench_command(depth: u8) {
 
     let duration = start_time.elapsed();
     let nps = if duration.as_secs_f64() > 0.0 {
-        total_nodes as f64 / duration.as_secs_f64()
+        #[allow(clippy::cast_precision_loss)]
+        let nodes_f64 = total_nodes as f64;
+        nodes_f64 / duration.as_secs_f64()
     } else {
         0.0
     };
