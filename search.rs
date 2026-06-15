@@ -159,21 +159,27 @@ fn negamax(position: Position, depth: i32, mut alpha: i32, beta: i32, nodes: &mu
         return quiescence(position, alpha, beta, nodes, ply, killers);
     }
 
+    let in_check = is_in_check(position, position.turn);
+
     let mut moves = legal_moves(position);
     order_moves(&position, &mut moves, ply, killers);
     if moves.is_empty() {
-        if is_in_check(position, position.turn) {
-            return MIN_SCORE + 1;
+        if in_check {
+            // Favor faster mates by subtracting ply
+            return MIN_SCORE + ply as i32;
         }
         return 0;
     }
+
+    // Check extension: if we are in check, search 1 ply deeper, up to a maximum depth (e.g. ply < 128)
+    let extension = if in_check && ply < 128 { 1 } else { 0 };
 
     let mut score = MIN_SCORE;
 
     for &m in &moves {
         let mut pos = position;
         let undo = make_move(&mut pos, m);
-        let val = -negamax(pos, depth - 1, -beta, -alpha, nodes, ply + 1, killers);
+        let val = -negamax(pos, depth - 1 + extension, -beta, -alpha, nodes, ply + 1, killers);
         unmake_move(&mut pos, m, undo);
 
         if val >= beta {
