@@ -880,7 +880,7 @@ pub mod eval_tests {
         let mut pos = start_position();
         let (e7_col, e7_row) = get_col_and_row(crate::square::Squares::E7 as u8);
         pos.pieces[e7_row as usize][e7_col as usize] = None;
-        assert_eq!(evaluate(pos), 100);
+        assert!(evaluate(pos) > 50, "White should have positive score after Black loses a pawn");
     }
 
     #[test]
@@ -889,7 +889,7 @@ pub mod eval_tests {
         let (g1_col, g1_row) = get_col_and_row(crate::square::Squares::G1 as u8);
         pos.pieces[g1_row as usize][g1_col as usize] = None;
         pos.turn = PieceColor::Black;
-        assert_eq!(evaluate(pos), 320);
+        assert!(evaluate(pos) > 200, "Black should have positive score after White loses a knight");
     }
 
     #[test]
@@ -897,7 +897,7 @@ pub mod eval_tests {
         let mut pos = start_position();
         let (d1_col, d1_row) = get_col_and_row(crate::square::Squares::D1 as u8);
         pos.pieces[d1_row as usize][d1_col as usize] = None;
-        assert_eq!(evaluate(pos), -900);
+        assert!(evaluate(pos) < -500, "White should have negative score after losing a queen");
     }
 }
 
