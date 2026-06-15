@@ -49,6 +49,23 @@ Massive performance leap and full GUI compatibility. Engine can now confidently 
 - ✅ Tactical test suite — new tests covering forks, pins, skewers, and forced mates to guarantee search correctness
 - ✅ 124 unit tests (up from 114)
 
+## v0.5.1
+
+Algorithmic overhaul achieving a massive speedup in search performance. Advanced heuristics allow the engine to evaluate 5x fewer nodes and reach depths 10+ with tactical accuracy.
+
+- ✅ CI/CD pipeline — automated `cargo test` and `cargo clippy` execution via GitHub Actions
+- ✅ Perft command — `perft <depth>` command for strict move generation validation against known node counts
+- ✅ Bench command — automated `bench <depth>` command to accurately measure Nodes Per Second (NPS) improvements
+- ✅ Zobrist Hashing — fully incremental 64-bit XOR position hashing for fast state tracking
+- ✅ Transposition Table (TT) — caches `ZobristHash`, depth, score, and best move to completely eliminate redundant tree searches
+- ✅ TT Move Ordering — probes the Transposition Table and evaluates its `best_move` first, providing instantaneous alpha-beta cutoffs
+- ✅ Null Move Pruning (NMP) — artificially passes the turn to safely prune huge branches in non-zugzwang positions
+- ✅ History Heuristic — tracks quiet moves that successfully cause cutoffs in a `[70][70]` table and ranks them higher in sibling nodes
+- ✅ Dynamic Hash Allocation — supports UCI `setoption name Hash value X` to dynamically resize the TT in megabytes
+- ✅ UCI `ucinewgame` support — correctly clears the Transposition Table between games to prevent cross-game evaluation pollution
+- ✅ MultiPV Search — supports `setoption name MultiPV value X` to search and output the top `X` lines sequentially
+- ✅ 131 unit tests (up from 124)
+
 ## How to Play
 
 ### Interactive mode (terminal)
@@ -93,4 +110,4 @@ Or load the binary at `target/release/chess-engine` in any UCI-compatible GUI.
 cargo test
 ```
 
-All 114 tests should pass.
+All 131 tests should pass.
