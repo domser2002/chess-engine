@@ -92,31 +92,24 @@ pub fn uci_loop() {
 
             if let Some(params) = trimmed.strip_prefix("go ") {
                 let tokens: Vec<&str> = params.split_whitespace().collect();
+                
                 let mut is_infinite = false;
+                let mut wtime: Option<u64> = None;
+                let mut btime: Option<u64> = None;
+                let mut winc: Option<u64> = None;
+                let mut binc: Option<u64> = None;
+                let mut movestogo: Option<u64> = None;
+                let mut movetime: Option<u64> = None;
+                
                 for (i, token) in tokens.iter().enumerate() {
                     match *token {
-                        "infinite" => {
-                            is_infinite = true;
-                        }
-                        "movetime" => {
-                            if let Some(val) = tokens.get(i + 1).and_then(|s| s.parse::<u64>().ok()) {
-                                config.time_per_move_ms = val;
-                            }
-                        }
-                        "wtime" => {
-                            if let Some(val) = tokens.get(i + 1).and_then(|s| s.parse::<u64>().ok()) {
-                                if position.turn == PieceColor::White {
-                                    config.time_per_move_ms = val / 40;
-                                }
-                            }
-                        }
-                        "btime" => {
-                            if let Some(val) = tokens.get(i + 1).and_then(|s| s.parse::<u64>().ok()) {
-                                if position.turn == PieceColor::Black {
-                                    config.time_per_move_ms = val / 40;
-                                }
-                            }
-                        }
+                        "infinite" => is_infinite = true,
+                        "movetime" => movetime = tokens.get(i + 1).and_then(|s| s.parse::<u64>().ok()),
+                        "wtime" => wtime = tokens.get(i + 1).and_then(|s| s.parse::<u64>().ok()),
+                        "btime" => btime = tokens.get(i + 1).and_then(|s| s.parse::<u64>().ok()),
+                        "winc" => winc = tokens.get(i + 1).and_then(|s| s.parse::<u64>().ok()),
+                        "binc" => binc = tokens.get(i + 1).and_then(|s| s.parse::<u64>().ok()),
+                        "movestogo" => movestogo = tokens.get(i + 1).and_then(|s| s.parse::<u64>().ok()),
                         "depth" => {
                             if let Some(val) = tokens.get(i + 1).and_then(|s| s.parse::<i32>().ok()) {
                                 config.max_depth = val;
@@ -126,9 +119,32 @@ pub fn uci_loop() {
                         _ => {}
                     }
                 }
+
                 if is_infinite {
                     // Effectively infinite — engine searches until `stop` is received
                     config.time_per_move_ms = u64::MAX / 2;
+                } else if let Some(mt) = movetime {
+                    config.time_per_move_ms = mt;
+                } else {
+                    let (time_left, inc) = if position.turn == PieceColor::White {
+                        (wtime, winc)
+                    } else {
+                        (btime, binc)
+                    };
+
+                    if let Some(t) = time_left {
+                        // Estimate moves left if not provided
+                        let moves_left = movestogo.unwrap_or(30).max(1);
+                        
+                        let base_time = t / moves_left;
+                        // Use only a fraction of the increment to avoid time trouble
+                        let increment = inc.unwrap_or(0) * 3 / 4; 
+                        
+                        let total_time = base_time + increment;
+                        // Keep a small 50ms buffer so we don't flag on the last millisecond
+                        let safe_buffer = 50;
+                        config.time_per_move_ms = if total_time > safe_buffer { total_time - safe_buffer } else { 10 };
+                    }
                 }
             }
 

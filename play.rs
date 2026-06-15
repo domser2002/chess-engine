@@ -9,9 +9,11 @@ use crate::piece::*;
 pub fn interactive_loop() {
     let mut position = start_position();
     let mut move_count = 0;
+    let mut move_time_ms = 10_000; // Default to 10 seconds
 
     println!("Chess Engine — Interactive Mode");
     println!("Type moves in algebraic notation (e4, Nf3, exd5, 0-0, f8=Q)");
+    println!("Type 'time <seconds>' to change the engine's thinking time (e.g., 'time 5')");
     println!("Type 'quit' to exit, 'moves' to see all legal moves\n");
 
     loop {
@@ -53,6 +55,15 @@ pub fn interactive_loop() {
                     println!("Bye!");
                     break;
                 }
+                if input.starts_with("time ") {
+                    if let Ok(secs) = input[5..].trim().parse::<u64>() {
+                        move_time_ms = secs * 1000;
+                        println!("Engine thinking time set to {} seconds.", secs);
+                    } else {
+                        println!("Invalid time format. Use 'time <seconds>'");
+                    }
+                    continue;
+                }
                 if input == "moves" {
                     for m in &moves {
                         println!("  {}", print_move(*m));
@@ -89,7 +100,8 @@ pub fn interactive_loop() {
                         }
 
                         // Engine's turn — iterative deepening with time management
-                        let config = Default::default();
+                        let mut config: crate::search::SearchConfig = Default::default();
+                        config.time_per_move_ms = move_time_ms;
                         let result = crate::search::search_with_time(position, config, crate::search::no_stop());
                         match result.best_move {
                             Some(engine_move) => {
