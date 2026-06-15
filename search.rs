@@ -218,6 +218,21 @@ fn negamax(position: Position, depth: i32, mut alpha: i32, beta: i32, nodes: &mu
 
     let in_check = is_in_check(position, position.turn);
 
+    // Null Move Pruning
+    if depth >= 3 && !in_check && position.has_non_pawn_material(position.turn) {
+        let mut pos = position;
+        let undo = pos.make_null_move();
+        
+        let r = 2; // Depth reduction for null move
+        let val = -negamax(pos, depth - 1 - r, -beta, -beta + 1, nodes, ply + 1, killers, tt);
+        
+        pos.unmake_null_move(undo);
+        
+        if val >= beta {
+            return beta;
+        }
+    }
+
     let mut moves = legal_moves(position);
     order_moves(&position, &mut moves, ply, killers, tt_move);
     if moves.is_empty() {

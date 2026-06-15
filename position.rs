@@ -28,6 +28,13 @@ pub struct UndoInfo {
     pub hash: u64,
 }
 
+/// Stores the state needed to undo a null move.
+#[derive(Copy, Clone, PartialEq, Debug)]
+pub struct NullUndoInfo {
+    pub last_move: Option<Move>,
+    pub hash: u64,
+}
+
 const ROOK_DIRS: [(i8, i8); 4] = [(1, 0), (-1, 0), (0, 1), (0, -1)];
 const BISHOP_DIRS: [(i8, i8); 4] = [(1, 1), (1, -1), (-1, 1), (-1, -1)];
 const KING_DIRS: [(i8, i8); 8] = [
@@ -838,5 +845,57 @@ pub fn unmake_move(position: &mut Position, m: Move, undo: UndoInfo) {
                 position.pieces[to_row as usize][to_col as usize] = None;
             }
         }
+    }
+}
+
+impl Position {
+    /// Applies a null move: passes the turn and clears en-passant state.
+    pub fn make_null_move(&mut self) -> NullUndoInfo {
+        let undo = NullUndoInfo {
+            last_move: self.last_move,
+            hash: self.hash,
+        };
+
+        // Clear en passant hash
+        if let Some(ep) = self.en_passant_col() {
+            self.hash ^= crate::zobrist::ZOBRIST.en_passant[ep];
+        }
+
+        // Set last_move to None to clear en_passant state
+        self.last_move = None;
+
+        // Switch turn
+        self.turn = match self.turn {
+            PieceColor::White => PieceColor::Black,
+            PieceColor::Black => PieceColor::White,
+        };
+        self.hash ^= crate::zobrist::ZOBRIST.side_to_move;
+
+        undo
+    }
+
+    /// Undoes a null move.
+    pub fn unmake_null_move(&mut self, undo: NullUndoInfo) {
+        self.turn = match self.turn {
+            PieceColor::White => PieceColor::Black,
+            PieceColor::Black => PieceColor::White,
+        };
+        self.last_move = undo.last_move;
+        self.hash = undo.hash;
+    }
+
+    /// Checks if the given side has any non-pawn, non-king material.
+    /// Used for Null Move Pruning to avoid zugzwang endgames.
+    pub fn has_non_pawn_material(&self, color: PieceColor) -> bool {
+        for row in 0..8 {
+            for col in 0..8 {
+                if let Some(p) = self.pieces[row][col] {
+                    if p.piece_color == color && p.piece_type != PieceType::Pawn && p.piece_type != PieceType::King {
+                        return true;
+                    }
+                }
+            }
+        }
+        false
     }
 }
