@@ -21,10 +21,8 @@ pub fn get_square_idx(row: u8, col: u8) -> u8 {
 }
 
 pub fn get_col_and_row(square: u8) -> (u8, u8) {
-    if square < 1 || square > 64 {
-        panic!("Invalid square!");
-    }
-    let column_idx: u8 = square.wrapping_sub(1) / ROW_NUM as u8;
+    assert!((1..=64).contains(&square), "Invalid square!");
+    let column_idx: u8 = square.wrapping_sub(1) / ROW_NUM;
     let row_idx = square.wrapping_sub(1) % COL_NUM;
     (column_idx, row_idx)
 }

@@ -82,12 +82,12 @@ pub const BLACK_KING: Piece = Piece {
 
 pub fn get_char(p: Piece) -> Option<char> {
     match p.piece_type {
-        PieceType::Pawn => return None,
-        PieceType::Knight => return Some('N'),
-        PieceType::Bishop => return Some('B'),
-        PieceType::Rook => return Some('R'),
-        PieceType::Queen => return Some('Q'),
-        PieceType::King => return Some('K')
+        PieceType::Pawn => None,
+        PieceType::Knight => Some('N'),
+        PieceType::Bishop => Some('B'),
+        PieceType::Rook => Some('R'),
+        PieceType::Queen => Some('Q'),
+        PieceType::King => Some('K')
     }
 }
 

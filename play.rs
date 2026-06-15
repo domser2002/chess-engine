@@ -1,7 +1,7 @@
 use std::io::{self, BufRead, Write};
-use crate::position::{self, *};
-use crate::r#move::*;
-use crate::piece::*;
+use crate::position::{self, start_position, legal_moves, is_in_check, make_move};
+use crate::r#move::{print_move, parse_move_algebraic};
+use crate::piece::PieceColor;
 
 /// Run an interactive game where the user types moves in algebraic notation
 /// and the engine responds with the best move found by 1-ply search.
@@ -58,7 +58,7 @@ pub fn interactive_loop() {
                 if input.starts_with("time ") {
                     if let Ok(secs) = input[5..].trim().parse::<u64>() {
                         move_time_ms = secs * 1000;
-                        println!("Engine thinking time set to {} seconds.", secs);
+                        println!("Engine thinking time set to {secs} seconds.");
                     } else {
                         println!("Invalid time format. Use 'time <seconds>'");
                     }
@@ -103,22 +103,19 @@ pub fn interactive_loop() {
                         let mut config: crate::search::SearchConfig = Default::default();
                         config.time_per_move_ms = move_time_ms;
                         let result = crate::search::search_with_time(position, config, crate::search::no_stop());
-                        match result.best_move {
-                            Some(engine_move) => {
-                                let engine_str = print_move(engine_move);
-                                make_move(&mut position, engine_move);
-                                move_count += 1;
-                                println!("Engine move: {engine_str} (depth {}, score {}, {} nodes)", result.depth_reached, result.score, result.nodes);
-                                println!();
-                            }
-                            None => {
-                                println!("Engine has no legal moves!");
-                                break;
-                            }
+                        if let Some(engine_move) = result.best_move {
+                            let engine_str = print_move(engine_move);
+                            make_move(&mut position, engine_move);
+                            move_count += 1;
+                            println!("Engine move: {engine_str} (depth {}, score {}, {} nodes)", result.depth_reached, result.score, result.nodes);
+                            println!();
+                        } else {
+                            println!("Engine has no legal moves!");
+                            break;
                         }
                     }
                     None => {
-                        println!("Invalid move '{}'. Type 'moves' to see available moves.", input);
+                        println!("Invalid move '{input}'. Type 'moves' to see available moves.");
                     }
                 }
             }

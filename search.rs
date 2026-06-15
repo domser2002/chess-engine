@@ -47,7 +47,7 @@ pub struct SearchResult {
 }
 
 /// Find the best move using iterative deepening with time management.
-/// Starts at depth 1, increases depth until time runs out, max_depth is reached, or `stop` is set.
+/// Starts at depth 1, increases depth until time runs out, `max_depth` is reached, or `stop` is set.
 pub fn search_with_time(position: Position, config: SearchConfig, stop: Arc<AtomicBool>) -> SearchResult {
     let mut moves = legal_moves(position);
     let mut killers = [[None; 2]; 128];
@@ -80,11 +80,10 @@ pub fn search_with_time(position: Position, config: SearchConfig, stop: Arc<Atom
         }
 
         // PV move ordering: swap the best move from the previous iteration to the front
-        if let Some(pv_m) = best_from_prev {
-            if let Some(idx) = moves.iter().position(|&m| m == pv_m) {
+        if let Some(pv_m) = best_from_prev
+            && let Some(idx) = moves.iter().position(|&m| m == pv_m) {
                 moves.swap(0, idx);
             }
-        }
 
         let mut best = moves[0];
         let mut best_score = MIN_SCORE;
@@ -127,14 +126,14 @@ pub fn search_with_time(position: Position, config: SearchConfig, stop: Arc<Atom
                 let elapsed_ms = start.elapsed().as_millis();
                 let pv_str = crate::uci::move_to_uci(best);
                 let info_msg = format!("info depth {depth} score cp {best_score} nodes {total_nodes} time {elapsed_ms} pv {pv_str}");
-                println!("{}", info_msg);
+                println!("{info_msg}");
                 io::stdout().flush().unwrap();
                 let mut log_file = std::fs::OpenOptions::new()
                     .create(true)
                     .append(true)
                     .open("/tmp/chess_uci.log")
                     .unwrap_or_else(|_| std::fs::File::create("/dev/null").unwrap());
-                std::io::Write::write_fmt(&mut log_file, format_args!("< {}\n", info_msg)).ok();
+                std::io::Write::write_fmt(&mut log_file, format_args!("< {info_msg}\n")).ok();
             }
         }
     }
@@ -187,7 +186,7 @@ fn negamax(position: Position, depth: i32, mut alpha: i32, beta: i32, nodes: &mu
     }
 
     // Check extension: if we are in check, search 1 ply deeper, up to a maximum depth (e.g. ply < 128)
-    let extension = if in_check && ply < 128 { 1 } else { 0 };
+    let extension = i32::from(in_check && ply < 128);
 
     let mut score = MIN_SCORE;
 
@@ -198,12 +197,11 @@ fn negamax(position: Position, depth: i32, mut alpha: i32, beta: i32, nodes: &mu
         unmake_move(&mut pos, m, undo);
 
         if val >= beta {
-            if !m.capture && ply < 128 {
-                if killers[ply][0] != Some(m) {
+            if !m.capture && ply < 128
+                && killers[ply][0] != Some(m) {
                     killers[ply][1] = killers[ply][0];
                     killers[ply][0] = Some(m);
                 }
-            }
             return beta;
         }
         if val > score {

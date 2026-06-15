@@ -1,4 +1,4 @@
-use crate::piece::*;
+use crate::piece::{Piece, PieceColor, WHITE_KING, BLACK_KING, PieceType, get_char, WHITE_QUEEN, BLACK_QUEEN, WHITE_ROOK, BLACK_ROOK, WHITE_BISHOP, BLACK_BISHOP, WHITE_KNIGHT, BLACK_KNIGHT};
 use crate::square::{self, get_square_name};
 use crate::position::Position;
 
@@ -32,7 +32,7 @@ impl Move {
             piece = BLACK_KING;
         }
         Self {
-            piece: piece,
+            piece,
             from: SHORT_CASTLING_SQUARE,
             to: SHORT_CASTLING_SQUARE,
             capture: false,
@@ -49,7 +49,7 @@ impl Move {
             piece = BLACK_KING;
         }
         Self {
-            piece: piece,
+            piece,
             from: LONG_CASTLING_SQUARE,
             to: LONG_CASTLING_SQUARE,
             capture: false,
@@ -63,9 +63,7 @@ impl Move {
     }
 
     pub fn promote_to(mut self, piece: Piece) -> Self {
-        if self.piece.piece_type != PieceType::Pawn {
-            panic!("Only pawns can promote!");
-        }
+        assert!((self.piece.piece_type == PieceType::Pawn), "Only pawns can promote!");
         self.new_piece = Some(piece);
         self
     }
@@ -88,15 +86,11 @@ pub fn print_move(m: Move) -> String
         s.extend(src.chars().next());
     }
     s.push_str(&get_square_name(m.to));
-    if m.piece.piece_type == PieceType::Pawn {
-        match m.new_piece {
-            Some(new_piece) => {
-                s.push('=');
-                s.extend(get_char(new_piece));
-            }
-            None => {}
+    if m.piece.piece_type == PieceType::Pawn
+        && let Some(new_piece) = m.new_piece {
+            s.push('=');
+            s.extend(get_char(new_piece));
         }
-    }
     s
 }
 
@@ -121,26 +115,22 @@ fn parse_square(s: &str) -> Option<u8> {
 
 /// Parse a move in UCI coordinate notation: "e2e4", "g1f3", "e7e8q".
 pub fn parse_move_uci(s: &str, position: &Position) -> Option<Move> {
-    if s == "e1g1" || s == "e1h1" {
-        if position.turn == PieceColor::White {
+    if (s == "e1g1" || s == "e1h1")
+        && position.turn == PieceColor::White {
             return Some(Move::build_short_castling(PieceColor::White));
         }
-    }
-    if s == "e8g8" || s == "e8h8" {
-        if position.turn == PieceColor::Black {
+    if (s == "e8g8" || s == "e8h8")
+        && position.turn == PieceColor::Black {
             return Some(Move::build_short_castling(PieceColor::Black));
         }
-    }
-    if s == "e1c1" || s == "e1a1" {
-        if position.turn == PieceColor::White {
+    if (s == "e1c1" || s == "e1a1")
+        && position.turn == PieceColor::White {
             return Some(Move::build_long_castling(PieceColor::White));
         }
-    }
-    if s == "e8c8" || s == "e8a8" {
-        if position.turn == PieceColor::Black {
+    if (s == "e8c8" || s == "e8a8")
+        && position.turn == PieceColor::Black {
             return Some(Move::build_long_castling(PieceColor::Black));
         }
-    }
 
     let (from_str, rest) = s.split_at(2);
     if rest.len() < 2 {
@@ -274,8 +264,8 @@ fn parse_move_algebraic_body(body: &str, piece_type: PieceType, promo: Option<Pi
     }
 
     // Parse disambiguation components
-    let ambig_file: Option<u8> = disambig.chars().find(|c| c.is_ascii_lowercase()).map(|c| (c as u8) - b'a');
-    let ambig_rank: Option<u8> = disambig.chars().find(|c| c.is_ascii_digit()).map(|c| (c as u8) - b'1');
+    let ambig_file: Option<u8> = disambig.chars().find(char::is_ascii_lowercase).map(|c| (c as u8) - b'a');
+    let ambig_rank: Option<u8> = disambig.chars().find(char::is_ascii_digit).map(|c| (c as u8) - b'1');
 
     moves.into_iter().find(|m| {
         if m.from == SHORT_CASTLING_SQUARE || m.from == LONG_CASTLING_SQUARE {
@@ -297,16 +287,14 @@ fn parse_move_algebraic_body(body: &str, piece_type: PieceType, promo: Option<Pi
         }
         // Check disambiguation for all pieces (including pawns, even without 'x')
         let (from_col, from_row) = square::get_col_and_row(m.from);
-        if let Some(f) = ambig_file {
-            if from_col != f {
+        if let Some(f) = ambig_file
+            && from_col != f {
                 return false;
             }
-        }
-        if let Some(r) = ambig_rank {
-            if from_row != r {
+        if let Some(r) = ambig_rank
+            && from_row != r {
                 return false;
             }
-        }
         true
     })
 }

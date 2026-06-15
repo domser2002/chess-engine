@@ -1,4 +1,4 @@
-use crate::piece::*;
+use crate::piece::{Piece, PieceType, PieceColor};
 use crate::position::Position;
 
 /// Piece material values in centipawns.

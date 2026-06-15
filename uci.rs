@@ -2,9 +2,9 @@ use std::io::{self, BufRead, Write};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread::{self, JoinHandle};
-use crate::piece::*;
-use crate::position::{self, *};
-use crate::r#move::*;
+use crate::piece::{PieceColor, PieceType};
+use crate::position::{self, start_position, Position, make_move};
+use crate::r#move::{parse_move_uci, Move, SHORT_CASTLING_SQUARE, LONG_CASTLING_SQUARE};
 
 /// Run the UCI protocol loop — reads commands from stdin until "quit" or EOF.
 pub fn uci_loop() {
@@ -32,7 +32,7 @@ pub fn uci_loop() {
             continue;
         }
         
-        writeln!(log_file, "> {}", trimmed).ok();
+        writeln!(log_file, "> {trimmed}").ok();
 
         if trimmed == "quit" {
             stop.store(true, Ordering::Relaxed);
@@ -156,8 +156,8 @@ pub fn uci_loop() {
                     Some(m) => move_to_uci(m),
                     None => "0000".to_string(),
                 };
-                let bestmove_msg = format!("bestmove {}", uci_str);
-                println!("{}", bestmove_msg);
+                let bestmove_msg = format!("bestmove {uci_str}");
+                println!("{bestmove_msg}");
                 io::stdout().flush().unwrap();
                 
                 let mut log_file = std::fs::OpenOptions::new()
@@ -165,7 +165,7 @@ pub fn uci_loop() {
                     .append(true)
                     .open("/tmp/chess_uci.log")
                     .unwrap_or_else(|_| std::fs::File::create("/dev/null").unwrap());
-                std::io::Write::write_fmt(&mut log_file, format_args!("< {}\n", bestmove_msg)).ok();
+                std::io::Write::write_fmt(&mut log_file, format_args!("< {bestmove_msg}\n")).ok();
             }));
             continue;
         }
