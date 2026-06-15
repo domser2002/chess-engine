@@ -125,8 +125,16 @@ pub fn search_with_time(position: Position, config: SearchConfig, stop: Arc<Atom
 
             if config.uci_output {
                 let elapsed_ms = start.elapsed().as_millis();
-                println!("info depth {depth} score cp {best_score} nodes {total_nodes} time {elapsed_ms}");
+                let pv_str = crate::uci::move_to_uci(best);
+                let info_msg = format!("info depth {depth} score cp {best_score} nodes {total_nodes} time {elapsed_ms} pv {pv_str}");
+                println!("{}", info_msg);
                 io::stdout().flush().unwrap();
+                let mut log_file = std::fs::OpenOptions::new()
+                    .create(true)
+                    .append(true)
+                    .open("/tmp/chess_uci.log")
+                    .unwrap_or_else(|_| std::fs::File::create("/dev/null").unwrap());
+                std::io::Write::write_fmt(&mut log_file, format_args!("< {}\n", info_msg)).ok();
             }
         }
     }

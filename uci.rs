@@ -13,6 +13,14 @@ pub fn uci_loop() {
     let stop = Arc::new(AtomicBool::new(false));
     let mut search_handle: Option<JoinHandle<()>> = None;
 
+    let mut log_file = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open("/tmp/chess_uci.log")
+        .unwrap_or_else(|_| std::fs::File::create("/dev/null").unwrap());
+        
+    writeln!(log_file, "--- ENGINE STARTED ---").ok();
+
     for line in stdin.lock().lines() {
         let line = match line {
             Ok(l) => l,
@@ -23,6 +31,8 @@ pub fn uci_loop() {
         if trimmed.is_empty() {
             continue;
         }
+        
+        writeln!(log_file, "> {}", trimmed).ok();
 
         if trimmed == "quit" {
             stop.store(true, Ordering::Relaxed);
@@ -36,12 +46,16 @@ pub fn uci_loop() {
             println!("id name chess-engine");
             println!("id author domser");
             println!("uciok");
+            writeln!(log_file, "< id name chess-engine").ok();
+            writeln!(log_file, "< id author domser").ok();
+            writeln!(log_file, "< uciok").ok();
             io::stdout().flush().unwrap();
             continue;
         }
 
         if trimmed == "isready" {
             println!("readyok");
+            writeln!(log_file, "< readyok").ok();
             io::stdout().flush().unwrap();
             continue;
         }
@@ -122,16 +136,20 @@ pub fn uci_loop() {
             let stop_clone = stop.clone();
             search_handle = Some(thread::spawn(move || {
                 let result = crate::search::search_with_time(pos, config, stop_clone);
-                match result.best_move {
-                    Some(m) => {
-                        let uci_str = move_to_uci(m);
-                        println!("bestmove {uci_str}");
-                    }
-                    None => {
-                        println!("bestmove 0000");
-                    }
-                }
+                let uci_str = match result.best_move {
+                    Some(m) => move_to_uci(m),
+                    None => "0000".to_string(),
+                };
+                let bestmove_msg = format!("bestmove {}", uci_str);
+                println!("{}", bestmove_msg);
                 io::stdout().flush().unwrap();
+                
+                let mut log_file = std::fs::OpenOptions::new()
+                    .create(true)
+                    .append(true)
+                    .open("/tmp/chess_uci.log")
+                    .unwrap_or_else(|_| std::fs::File::create("/dev/null").unwrap());
+                std::io::Write::write_fmt(&mut log_file, format_args!("< {}\n", bestmove_msg)).ok();
             }));
             continue;
         }
