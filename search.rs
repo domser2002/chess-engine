@@ -86,6 +86,7 @@ pub fn search_with_time(position: Position, config: SearchConfig) -> SearchResul
 
         let mut best = moves[0];
         let mut best_score = MIN_SCORE;
+        let mut alpha = MIN_SCORE;
         let mut completed = true;
 
         for &m in &moves {
@@ -97,13 +98,15 @@ pub fn search_with_time(position: Position, config: SearchConfig) -> SearchResul
 
             let mut pos = position;
             let undo = make_move(&mut pos, m);
-            // Root moves are ply 0
-            let score = -negamax(pos, depth - 1, MIN_SCORE, MAX_SCORE, &mut total_nodes, 1, &mut killers);
+            let score = -negamax(pos, depth - 1, -MAX_SCORE, -alpha, &mut total_nodes, 1, &mut killers);
             unmake_move(&mut pos, m, undo);
 
             if score > best_score {
                 best_score = score;
                 best = m;
+                if score > alpha {
+                    alpha = score;
+                }
             }
         }
 
