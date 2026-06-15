@@ -240,10 +240,7 @@ pub mod move_tests {
 
     #[test]
     fn parse_uci_promotion() {
-        let mut pos = crate::position::parse_fen("k7/5P2/8/8/8/8/8/K7 w - - 0 1").unwrap();
-        let (a1_col, a1_row) = get_col_and_row(A1 as u8);
-        let (a8_col, a8_row) = get_col_and_row(A8 as u8);
-        let (f7_col, f7_row) = get_col_and_row(F7 as u8);
+        let pos = crate::position::parse_fen("k7/5P2/8/8/8/8/8/K7 w - - 0 1").unwrap();
         let m = parse_move_uci("f7f8q", &pos).unwrap();
         assert_eq!(m.piece, WHITE_PAWN);
         assert!(!m.capture);
@@ -255,10 +252,6 @@ pub mod move_tests {
     #[test]
     fn parse_uci_en_passant() {
         let mut pos = crate::position::parse_fen("k7/8/8/3pP3/8/8/8/K7 w - - 0 1").unwrap();
-        let (a1_col, a1_row) = get_col_and_row(A1 as u8);
-        let (a8_col, a8_row) = get_col_and_row(A8 as u8);
-        let (e5_col, e5_row) = get_col_and_row(E5 as u8);
-        let (d5_col, d5_row) = get_col_and_row(D5 as u8);
         pos.last_move = Some(Move::build(BLACK_PAWN, D7 as u8, D5 as u8));
 
         let m = parse_move_uci("e5d6", &pos).unwrap();
@@ -325,10 +318,7 @@ pub mod move_tests {
 
     #[test]
     fn parse_algebraic_promotion() {
-        let mut pos = crate::position::parse_fen("k7/5P2/8/8/8/8/8/K7 w - - 0 1").unwrap();
-        let (a1_col, a1_row) = get_col_and_row(A1 as u8);
-        let (a8_col, a8_row) = get_col_and_row(A8 as u8);
-        let (f7_col, f7_row) = get_col_and_row(F7 as u8);
+        let pos = crate::position::parse_fen("k7/5P2/8/8/8/8/8/K7 w - - 0 1").unwrap();
         let m = parse_move_algebraic("f8=Q", &pos).unwrap();
         assert_eq!(m.piece, WHITE_PAWN);
         assert!(!m.capture);
@@ -357,12 +347,7 @@ pub mod move_tests {
     fn parse_disambiguation_two_rooks_file() {
         // Two white rooks, on f6 and c3, both can reach c6. King on e8 doesn't block.
         // "Rfc6" should pick the one from f6 (file disambiguation).
-        let mut pos = crate::position::parse_fen("4k3/8/5R2/8/8/2R5/8/K7 w - - 0 1").unwrap();
-        let (e8_col, e8_row) = get_col_and_row(E8 as u8);
-        let (a1_col, a1_row) = get_col_and_row(A1 as u8);
-        let (f6_col, f6_row) = get_col_and_row(F6 as u8);
-        let (c3_col, c3_row) = get_col_and_row(C3 as u8);
-        let (_c6_col, _c6_row) = get_col_and_row(C6 as u8);
+        let pos = crate::position::parse_fen("4k3/8/5R2/8/8/2R5/8/K7 w - - 0 1").unwrap();
         let m = parse_move_algebraic("Rfc6", &pos).unwrap();
         assert_eq!(m.from, F6 as u8);
         assert_eq!(m.to, C6 as u8);
@@ -373,12 +358,7 @@ pub mod move_tests {
     fn parse_disambiguation_two_rooks_rank() {
         // Two white rooks, on a3 and h3, both can reach c3.
         // "R3c3" should pick the one from rank 3 (only rank differs).
-        let mut pos = crate::position::parse_fen("4k3/8/8/8/2R5/8/8/K1R5 w - - 0 1").unwrap();
-        let (a1_col, a1_row) = get_col_and_row(A1 as u8);
-        let (e8_col, e8_row) = get_col_and_row(E8 as u8);
-        let (c1_col, c1_row) = get_col_and_row(C1 as u8);
-        let (c4_col, c4_row) = get_col_and_row(C4 as u8);
-        let (_c3_col, _c3_row) = get_col_and_row(C3 as u8);
+        let pos = crate::position::parse_fen("4k3/8/8/8/2R5/8/8/K1R5 w - - 0 1").unwrap();
         let m = parse_move_algebraic("R1c3", &pos).unwrap();
         assert_eq!(m.from, C1 as u8);
         assert_eq!(m.to, C3 as u8);
@@ -389,12 +369,7 @@ pub mod move_tests {
     fn parse_disambiguation_two_knights_file() {
         // Two white knights on g1 and b1, both can reach f3.
         // "Ngf3" picks the one from the g-file.
-        let mut pos = crate::position::parse_fen("4k3/8/8/8/8/8/3N4/K5N1 w - - 0 1").unwrap();
-        let (a1_col, a1_row) = get_col_and_row(A1 as u8);
-        let (e8_col, e8_row) = get_col_and_row(E8 as u8);
-        let (g1_col, g1_row) = get_col_and_row(G1 as u8);
-        let (d2_col, d2_row) = get_col_and_row(D2 as u8);
-        let (_f3_col, _f3_row) = get_col_and_row(F3 as u8);
+        let pos = crate::position::parse_fen("4k3/8/8/8/8/8/3N4/K5N1 w - - 0 1").unwrap();
         let m = parse_move_algebraic("Ngf3", &pos).unwrap();
         assert_eq!(m.from, G1 as u8);
         assert_eq!(m.to, F3 as u8);
@@ -407,10 +382,6 @@ pub mod move_tests {
         // User types "cb3" (shorthand for cxb3).
         // The parser should pick the pawn on c2, not a2.
         let mut pos = crate::position::parse_fen("4k3/8/8/8/8/8/P1P5/K7 w - - 0 1").unwrap();
-        let (a1_col, a1_row) = get_col_and_row(A1 as u8);
-        let (e8_col, e8_row) = get_col_and_row(E8 as u8);
-        let (a2_col, a2_row) = get_col_and_row(A2 as u8);
-        let (c2_col, c2_row) = get_col_and_row(C2 as u8);
         let (b3_col, b3_row) = get_col_and_row(B3 as u8);
         // Put a black piece on b3 so it's a valid capture square
         pos.pieces[b3_row as usize][b3_col as usize] = Some(BLACK_KNIGHT);
@@ -488,8 +459,6 @@ pub mod position_tests {
     #[test]
     fn make_move_promotion() {
         let mut pos = crate::position::parse_fen("k7/5P2/8/8/8/8/8/K7 w - - 0 1").unwrap();
-        let (a1_col, a1_row) = get_col_and_row(A1 as u8);
-        let (a8_col, a8_row) = get_col_and_row(A8 as u8);
         let (f7_col, f7_row) = get_col_and_row(F7 as u8);
         let (f8_col, f8_row) = get_col_and_row(F8 as u8);
         let promotion = Move::build(WHITE_PAWN, F7 as u8, F8 as u8).promote_to(WHITE_QUEEN);
@@ -503,8 +472,6 @@ pub mod position_tests {
     #[test]
     fn make_move_en_passant() {
         let mut pos = crate::position::parse_fen("k7/8/8/3pP3/8/8/8/K7 w - - 0 1").unwrap();
-        let (a1_col, a1_row) = get_col_and_row(A1 as u8);
-        let (a8_col, a8_row) = get_col_and_row(A8 as u8);
         let (e5_col, e5_row) = get_col_and_row(E5 as u8);
         let (d5_col, d5_row) = get_col_and_row(D5 as u8);
         let (d6_col, d6_row) = get_col_and_row(D6 as u8);
@@ -528,10 +495,7 @@ pub mod position_tests {
 
     #[test]
     fn is_in_check_by_bishop() {
-        let mut pos = crate::position::parse_fen("4k3/8/8/8/7b/8/8/4K3 w - - 0 1").unwrap();
-        let (e1_col, e1_row) = get_col_and_row(E1 as u8);
-        let (e8_col, e8_row) = get_col_and_row(E8 as u8);
-        let (h4_col, h4_row) = get_col_and_row(H4 as u8);
+        let pos = crate::position::parse_fen("4k3/8/8/8/7b/8/8/4K3 w - - 0 1").unwrap();
         assert!(is_in_check(pos, PieceColor::White));
         assert!(!is_in_check(pos, PieceColor::Black));
     }
@@ -539,8 +503,6 @@ pub mod position_tests {
     #[test]
     fn is_in_check_by_rook() {
         let mut pos = crate::position::parse_fen("4k3/8/8/8/8/8/8/4K3 w - - 0 1").unwrap();
-        let (e1_col, e1_row) = get_col_and_row(E1 as u8);
-        let (e8_col, e8_row) = get_col_and_row(E8 as u8);
         let (e4_col, e4_row) = get_col_and_row(E4 as u8);
         // Rook on same file (e4) attacks king on e1
         pos.pieces[e4_row as usize][e4_col as usize] = Some(BLACK_ROOK);
@@ -549,18 +511,13 @@ pub mod position_tests {
 
     #[test]
     fn is_in_check_by_knight() {
-        let mut pos = crate::position::parse_fen("4k3/8/8/8/8/5n2/8/4K3 w - - 0 1").unwrap();
-        let (e1_col, e1_row) = get_col_and_row(E1 as u8);
-        let (e8_col, e8_row) = get_col_and_row(E8 as u8);
-        let (f3_col, f3_row) = get_col_and_row(F3 as u8);
+        let pos = crate::position::parse_fen("4k3/8/8/8/8/5n2/8/4K3 w - - 0 1").unwrap();
         assert!(is_in_check(pos, PieceColor::White));
     }
 
     #[test]
     fn is_in_check_by_pawn() {
         let mut pos = crate::position::parse_fen("4k3/8/8/8/8/8/8/4K3 w - - 0 1").unwrap();
-        let (e1_col, e1_row) = get_col_and_row(E1 as u8);
-        let (e8_col, e8_row) = get_col_and_row(E8 as u8);
         let (d2_col, d2_row) = get_col_and_row(D2 as u8);
         // Black pawn attacks diagonally upward (toward higher row index)
         pos.pieces[d2_row as usize][d2_col as usize] = Some(BLACK_PAWN);
@@ -570,8 +527,6 @@ pub mod position_tests {
     #[test]
     fn is_in_check_blocked_by_friendly_piece() {
         let mut pos = crate::position::parse_fen("4k3/8/8/8/8/8/8/4K3 w - - 0 1").unwrap();
-        let (e1_col, e1_row) = get_col_and_row(E1 as u8);
-        let (e8_col, e8_row) = get_col_and_row(E8 as u8);
         let (e4_col, e4_row) = get_col_and_row(E4 as u8);
         let (e3_col, e3_row) = get_col_and_row(E3 as u8);
         // Rook on e4 would attack king on e1...
@@ -663,8 +618,6 @@ pub mod position_tests {
     #[test]
     fn castle_rights_lost_after_rook_captured() {
         let mut pos = crate::position::parse_fen("7r/8/8/8/8/8/8/7R w - - 0 1").unwrap();
-        let (h1_col, h1_row) = get_col_and_row(H1 as u8);
-        let (h8_col, h8_row) = get_col_and_row(H8 as u8);
         pos.white_short_castle = true;
 
         // Capture the black rook on h8
@@ -770,10 +723,6 @@ pub mod position_tests {
     #[test]
     fn make_unmake_capture() {
         let mut pos = crate::position::parse_fen("4k3/8/8/3p4/4P3/8/8/4K3 w - - 0 1").unwrap();
-        let (e1_col, e1_row) = get_col_and_row(E1 as u8);
-        let (e8_col, e8_row) = get_col_and_row(E8 as u8);
-        let (e4_col, e4_row) = get_col_and_row(E4 as u8);
-        let (d5_col, d5_row) = get_col_and_row(D5 as u8);
         let original = pos;
         let capture = Move::build(WHITE_PAWN, E4 as u8, D5 as u8).capture();
         let undo = make_move(&mut pos, capture);
@@ -785,10 +734,6 @@ pub mod position_tests {
     #[test]
     fn make_unmake_en_passant() {
         let mut pos = crate::position::parse_fen("k7/8/8/3pP3/8/8/8/K7 w - - 0 1").unwrap();
-        let (a1_col, a1_row) = get_col_and_row(A1 as u8);
-        let (a8_col, a8_row) = get_col_and_row(A8 as u8);
-        let (e5_col, e5_row) = get_col_and_row(E5 as u8);
-        let (d5_col, d5_row) = get_col_and_row(D5 as u8);
         pos.last_move = Some(Move::build(BLACK_PAWN, D7 as u8, D5 as u8));
         let original = pos;
         let exd6 = Move::build(WHITE_PAWN, E5 as u8, D6 as u8).capture();
@@ -841,10 +786,6 @@ pub mod position_tests {
     #[test]
     fn make_unmake_promotion() {
         let mut pos = crate::position::parse_fen("k7/5P2/8/8/8/8/8/K7 w - - 0 1").unwrap();
-        let (a1_col, a1_row) = get_col_and_row(A1 as u8);
-        let (a8_col, a8_row) = get_col_and_row(A8 as u8);
-        let (f7_col, f7_row) = get_col_and_row(F7 as u8);
-        let (_f8_col, _f8_row) = get_col_and_row(F8 as u8);
         let original = pos;
         let promo = Move::build(WHITE_PAWN, F7 as u8, F8 as u8).promote_to(WHITE_QUEEN);
         let undo = make_move(&mut pos, promo);
@@ -1234,7 +1175,7 @@ pub mod search_tests {
     use crate::position::*;
     use crate::r#move::*;
     use crate::search::*;
-    use crate::square::get_col_and_row;
+    
     use crate::square::Squares::*;
 
     #[test]
@@ -1292,11 +1233,7 @@ pub mod search_tests {
     #[test]
     fn captures_hanging_queen() {
         // White pawn on d4, black queen on e5 — pawn can capture diagonally to e5.
-        let mut pos = crate::position::parse_fen("4k3/8/8/4q3/3P4/8/8/4K3 w - - 0 1").unwrap();
-        let (e1_col, e1_row) = get_col_and_row(crate::square::Squares::E1 as u8);
-        let (e8_col, e8_row) = get_col_and_row(crate::square::Squares::E8 as u8);
-        let (e5_col, e5_row) = get_col_and_row(crate::square::Squares::E5 as u8);
-        let (d4_col, d4_row) = get_col_and_row(crate::square::Squares::D4 as u8);
+        let pos = crate::position::parse_fen("4k3/8/8/4q3/3P4/8/8/4K3 w - - 0 1").unwrap();
         let m = best_move(pos).unwrap();
         assert_eq!(m.from, crate::square::Squares::D4 as u8);
         assert_eq!(m.to, crate::square::Squares::E5 as u8);
@@ -1307,11 +1244,7 @@ pub mod search_tests {
     fn avoids_moving_into_bishop() {
         // White king on e1, black bishop on a5 (diagonal to e1).
         // White should not move the pawn on d2 to d3 (would expose king).
-        let mut pos = crate::position::parse_fen("4k3/8/8/b7/8/8/3P4/4K3 w - - 0 1").unwrap();
-        let (e1_col, e1_row) = get_col_and_row(crate::square::Squares::E1 as u8);
-        let (e8_col, e8_row) = get_col_and_row(crate::square::Squares::E8 as u8);
-        let (a5_col, a5_row) = get_col_and_row(crate::square::Squares::A5 as u8);
-        let (d2_col, d2_row) = get_col_and_row(crate::square::Squares::D2 as u8);
+        let pos = crate::position::parse_fen("4k3/8/8/b7/8/8/3P4/4K3 w - - 0 1").unwrap();
         let m = best_move(pos).unwrap();
         // The pawn at d2 should NOT move to d3 (that opens the diagonal)
         // It should move to d4 or stay put — but legal_moves already filters.
@@ -1322,12 +1255,7 @@ pub mod search_tests {
 
     #[test]
     fn knight_fork() {
-        let mut pos = crate::position::parse_fen("r3k3/8/8/1N6/8/8/8/4K3 w - - 0 1").unwrap();
-        let (e1_col, e1_row) = get_col_and_row(crate::square::Squares::E1 as u8);
-        let (e8_col, e8_row) = get_col_and_row(crate::square::Squares::E8 as u8);
-        let (b5_col, b5_row) = get_col_and_row(crate::square::Squares::B5 as u8);
-        let (a8_col, a8_row) = get_col_and_row(crate::square::Squares::A8 as u8);
-        let (_c7_col, _c7_row) = get_col_and_row(crate::square::Squares::C7 as u8);
+        let pos = crate::position::parse_fen("r3k3/8/8/1N6/8/8/8/4K3 w - - 0 1").unwrap();
         let m = best_move_depth(pos, 3).unwrap();
         assert_eq!(m.from, crate::square::Squares::B5 as u8);
         assert_eq!(m.to, crate::square::Squares::C7 as u8);
@@ -1335,12 +1263,7 @@ pub mod search_tests {
 
     #[test]
     fn bishop_fork() {
-        let mut pos = crate::position::parse_fen("4k3/8/8/8/r1B5/8/8/4K3 w - - 0 1").unwrap();
-        let (e1_col, e1_row) = get_col_and_row(crate::square::Squares::E1 as u8);
-        let (e8_col, e8_row) = get_col_and_row(crate::square::Squares::E8 as u8);
-        let (_b5_col, _b5_row) = get_col_and_row(crate::square::Squares::B5 as u8);
-        let (a4_col, a4_row) = get_col_and_row(crate::square::Squares::A4 as u8);
-        let (c4_col, c4_row) = get_col_and_row(crate::square::Squares::C4 as u8);
+        let pos = crate::position::parse_fen("4k3/8/8/8/r1B5/8/8/4K3 w - - 0 1").unwrap();
         let m = best_move_depth(pos, 3).unwrap();
         assert_eq!(m.from, crate::square::Squares::C4 as u8);
         assert_eq!(m.to, crate::square::Squares::B5 as u8);
