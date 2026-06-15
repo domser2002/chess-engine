@@ -415,6 +415,7 @@ pub mod position_tests {
         expected.pieces[to_row as usize][to_col as usize] = Some(WHITE_PAWN);
         expected.turn = PieceColor::Black;
         expected.last_move = Some(e4);
+        expected.hash = position.hash;
         assert_eq!(position, expected);
     }
 
@@ -431,6 +432,7 @@ pub mod position_tests {
         expected.pieces[f5_row as usize][f5_col as usize] = Some(WHITE_PAWN);
         expected.turn = PieceColor::Black;
         expected.last_move = Some(ef5);
+        expected.hash = position.hash;
         assert_eq!(position, expected);
     }
 

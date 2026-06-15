@@ -13,6 +13,7 @@ pub struct Position {
     pub white_long_castle: bool,
     pub black_short_castle: bool,
     pub black_long_castle: bool,
+    pub hash: u64,
 }
 
 /// Stores the state that changed during a move, enough to undo it.
@@ -24,6 +25,7 @@ pub struct UndoInfo {
     pub black_short_castle: bool,
     pub black_long_castle: bool,
     pub last_move: Option<Move>,
+    pub hash: u64,
 }
 
 const ROOK_DIRS: [(i8, i8); 4] = [(1, 0), (-1, 0), (0, 1), (0, -1)];
@@ -46,12 +48,13 @@ pub fn empty_position(turn: PieceColor) -> Position {
         white_long_castle: false,
         black_short_castle: false,
         black_long_castle: false,
+        hash: 0,
     }
 }
 
 pub fn start_position() -> Position {
- Position {
-    pieces: [
+    let mut pos = Position {
+        pieces: [
         [Some(WHITE_ROOK), Some(WHITE_KNIGHT), Some(WHITE_BISHOP), Some(WHITE_QUEEN), Some(WHITE_KING), Some(WHITE_BISHOP), Some(WHITE_KNIGHT), Some(WHITE_ROOK)],
         [Some(WHITE_PAWN); 8], 
         [None;8], [None;8], [None; 8], [None; 8],
@@ -63,7 +66,10 @@ pub fn start_position() -> Position {
         white_long_castle: true,
         black_short_castle: true,
         black_long_castle: true,
-    }
+        hash: 0,
+    };
+    pos.hash = crate::zobrist::compute_hash(&pos);
+    pos
 }
 
 /// Parse a FEN string into a Position.
@@ -156,7 +162,7 @@ pub fn parse_fen(fen: &str) -> Option<Position> {
     }
 
     // Fields 5–6 (halfmove clock, fullmove number) are accepted but not stored.
-
+    pos.hash = crate::zobrist::compute_hash(&pos);
     Some(pos)
 }
 
@@ -590,6 +596,7 @@ pub fn make_move(position: &mut Position, m: Move) -> UndoInfo {
         black_short_castle: position.black_short_castle,
         black_long_castle: position.black_long_castle,
         last_move: position.last_move,
+        hash: position.hash,
     };
 
     // Handle castling moves first (they use sentinel squares, not real coordinates)
@@ -625,6 +632,7 @@ pub fn make_move(position: &mut Position, m: Move) -> UndoInfo {
             position.turn = PieceColor::White;
         }
         position.last_move = Some(m);
+        crate::zobrist::update_hash_make_move(position, m, &undo);
         return undo;
     }
 
@@ -689,6 +697,7 @@ pub fn make_move(position: &mut Position, m: Move) -> UndoInfo {
                     position.turn = PieceColor::White;
                 }
                 position.last_move = Some(m);
+                crate::zobrist::update_hash_make_move(position, m, &captured_undo);
                 captured_undo
             } else {
                 // En passant: pawn capture to an apparently empty square
@@ -737,6 +746,7 @@ pub fn make_move(position: &mut Position, m: Move) -> UndoInfo {
                     position.turn = PieceColor::White;
                 }
                 position.last_move = Some(m);
+                crate::zobrist::update_hash_make_move(position, m, &undo);
                 undo// undo.captured is None — signals en passant
             }
         }
@@ -755,6 +765,7 @@ pub fn unmake_move(position: &mut Position, m: Move, undo: UndoInfo) {
     position.black_short_castle = undo.black_short_castle;
     position.black_long_castle = undo.black_long_castle;
     position.last_move = undo.last_move;
+    position.hash = undo.hash;
 
     // Flip the turn back
     if position.turn == PieceColor::White {
