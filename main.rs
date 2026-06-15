@@ -7,6 +7,7 @@ mod play;
 mod eval;
 mod search;
 pub mod zobrist;
+pub mod tt;
 mod perft;
 mod bench;
 #[cfg(test)]

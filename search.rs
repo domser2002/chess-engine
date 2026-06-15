@@ -12,9 +12,29 @@ const DEFAULT_DEPTH: i32 = 100;
 /// Default time per move in seconds.
 const DEFAULT_MOVE_TIME_SECS: u64 = 10;
 
-/// Safe sentinel values for alpha-beta bounds.
 const MIN_SCORE: i32 = -100_000;
 const MAX_SCORE: i32 = 100_000;
+const MATE_BOUND: i32 = 90_000;
+
+fn store_score(score: i32, ply: usize) -> i32 {
+    if score > MATE_BOUND {
+        score + ply as i32
+    } else if score < -MATE_BOUND {
+        score - ply as i32
+    } else {
+        score
+    }
+}
+
+fn retrieve_score(score: i32, ply: usize) -> i32 {
+    if score > MATE_BOUND {
+        score - ply as i32
+    } else if score < -MATE_BOUND {
+        score + ply as i32
+    } else {
+        score
+    }
+}
 
 /// Search configuration.
 #[derive(Clone, Copy)]
@@ -49,9 +69,10 @@ pub struct SearchResult {
 /// Find the best move using iterative deepening with time management.
 /// Starts at depth 1, increases depth until time runs out, `max_depth` is reached, or `stop` is set.
 pub fn search_with_time(position: Position, config: SearchConfig, stop: Arc<AtomicBool>) -> SearchResult {
+    let mut tt = crate::tt::TranspositionTable::new(16);
     let mut moves = legal_moves(position);
     let mut killers = [[None; 2]; 128];
-    order_moves(&position, &mut moves, 0, &killers);
+    order_moves(&position, &mut moves, 0, &killers, None);
     if moves.is_empty() {
         return SearchResult {
             best_move: None,
@@ -99,7 +120,7 @@ pub fn search_with_time(position: Position, config: SearchConfig, stop: Arc<Atom
 
             let mut pos = position;
             let undo = make_move(&mut pos, m);
-            let score = -negamax(pos, depth - 1, -MAX_SCORE, -alpha, &mut total_nodes, 1, &mut killers);
+            let score = -negamax(pos, depth - 1, -MAX_SCORE, -alpha, &mut total_nodes, 1, &mut killers, &mut tt);
             unmake_move(&mut pos, m, undo);
 
             if score > best_score {
@@ -166,17 +187,39 @@ pub fn best_move_depth(position: Position, depth: i32) -> Option<Move> {
 
 /// Negamax with alpha-beta pruning.
 /// `nodes` is incremented for every position evaluated.
-fn negamax(position: Position, depth: i32, mut alpha: i32, beta: i32, nodes: &mut u64, ply: usize, killers: &mut [[Option<Move>; 2]; 128]) -> i32 {
+fn negamax(position: Position, depth: i32, mut alpha: i32, beta: i32, nodes: &mut u64, ply: usize, killers: &mut [[Option<Move>; 2]; 128], tt: &mut crate::tt::TranspositionTable) -> i32 {
     *nodes += 1;
 
     if depth == 0 {
         return quiescence(position, alpha, beta, nodes, ply, killers);
     }
 
+    let mut tt_move = None;
+    if let Some(entry) = tt.probe(position.hash) {
+        tt_move = entry.best_move;
+        if entry.depth >= depth as u8 {
+            let score = retrieve_score(entry.score, ply);
+            match entry.flag {
+                crate::tt::TTFlag::Exact => return score,
+                crate::tt::TTFlag::Alpha => {
+                    if score <= alpha {
+                        return score;
+                    }
+                }
+                crate::tt::TTFlag::Beta => {
+                    if score >= beta {
+                        return score;
+                    }
+                }
+                crate::tt::TTFlag::Empty => {}
+            }
+        }
+    }
+
     let in_check = is_in_check(position, position.turn);
 
     let mut moves = legal_moves(position);
-    order_moves(&position, &mut moves, ply, killers);
+    order_moves(&position, &mut moves, ply, killers, tt_move);
     if moves.is_empty() {
         if in_check {
             // Favor faster mates by subtracting ply
@@ -189,11 +232,13 @@ fn negamax(position: Position, depth: i32, mut alpha: i32, beta: i32, nodes: &mu
     let extension = i32::from(in_check && ply < 128);
 
     let mut score = MIN_SCORE;
+    let old_alpha = alpha;
+    let mut best_move = None;
 
     for &m in &moves {
         let mut pos = position;
         let undo = make_move(&mut pos, m);
-        let val = -negamax(pos, depth - 1 + extension, -beta, -alpha, nodes, ply + 1, killers);
+        let val = -negamax(pos, depth - 1 + extension, -beta, -alpha, nodes, ply + 1, killers, tt);
         unmake_move(&mut pos, m, undo);
 
         if val >= beta {
@@ -202,15 +247,24 @@ fn negamax(position: Position, depth: i32, mut alpha: i32, beta: i32, nodes: &mu
                     killers[ply][1] = killers[ply][0];
                     killers[ply][0] = Some(m);
                 }
+            tt.store(position.hash, depth as u8, crate::tt::TTFlag::Beta, store_score(beta, ply), Some(m));
             return beta;
         }
         if val > score {
             score = val;
+            best_move = Some(m);
             if val > alpha {
                 alpha = val;
             }
         }
     }
+
+    let flag = if score <= old_alpha {
+        crate::tt::TTFlag::Alpha
+    } else {
+        crate::tt::TTFlag::Exact
+    };
+    tt.store(position.hash, depth as u8, flag, store_score(score, ply), best_move);
 
     score
 }
@@ -228,7 +282,7 @@ fn quiescence(position: Position, mut alpha: i32, beta: i32, nodes: &mut u64, pl
     }
 
     let mut moves = capture_moves(position);
-    order_moves(&position, &mut moves, ply, killers);
+    order_moves(&position, &mut moves, ply, killers, None);
 
     let mut score = stand_pat;
 
@@ -253,7 +307,10 @@ fn quiescence(position: Position, mut alpha: i32, beta: i32, nodes: &mut u64, pl
 }
 
 /// Score a move for move ordering (MVV-LVA and Killers).
-fn score_move(position: &Position, m: &Move, ply: usize, killers: &[[Option<Move>; 2]; 128]) -> i32 {
+fn score_move(position: &Position, m: &Move, ply: usize, killers: &[[Option<Move>; 2]; 128], tt_move: Option<Move>) -> i32 {
+    if Some(*m) == tt_move {
+        return 10_000_000;
+    }
     if m.capture {
         let (col, row) = crate::square::get_col_and_row(m.to);
         let victim_val = match position.pieces[row as usize][col as usize] {
@@ -276,6 +333,6 @@ fn score_move(position: &Position, m: &Move, ply: usize, killers: &[[Option<Move
 }
 
 /// Order moves to improve alpha-beta pruning efficiency.
-fn order_moves(position: &Position, moves: &mut [Move], ply: usize, killers: &[[Option<Move>; 2]; 128]) {
-    moves.sort_unstable_by_key(|m| -score_move(position, m, ply, killers));
+fn order_moves(position: &Position, moves: &mut [Move], ply: usize, killers: &[[Option<Move>; 2]; 128], tt_move: Option<Move>) {
+    moves.sort_unstable_by_key(|m| -score_move(position, m, ply, killers, tt_move));
 }
