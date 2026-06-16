@@ -117,29 +117,6 @@ pub struct NullUndoInfo {
     pub hash: u64,
 }
 
-const ROOK_DIRS: [(i8, i8); 4] = [(1, 0), (-1, 0), (0, 1), (0, -1)];
-const BISHOP_DIRS: [(i8, i8); 4] = [(1, 1), (1, -1), (-1, 1), (-1, -1)];
-const KING_DIRS: [(i8, i8); 8] = [
-    (1, 0),
-    (-1, 0),
-    (0, 1),
-    (0, -1),
-    (1, 1),
-    (1, -1),
-    (-1, 1),
-    (-1, -1),
-];
-const KNIGHT_OFFSETS: [(i8, i8); 8] = [
-    (2, 1),
-    (1, 2),
-    (-2, 1),
-    (-1, 2),
-    (2, -1),
-    (1, -2),
-    (-2, -1),
-    (-1, -2),
-];
-
 pub fn empty_position(turn: PieceColor) -> Position {
     Position {
         piece_colors: [Bitboard::empty(); 2],

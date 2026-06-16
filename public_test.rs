@@ -1787,16 +1787,12 @@ fn repro_illegal_king_move_3() {
     crate::position::print_position(pos);
     
     let legals = crate::position::legal_moves(pos);
-    let mut is_b4_legal = false;
     println!("Legal moves:");
-    for m in legals {
+    for &m in &legals {
         println!("{}", crate::uci::move_to_uci(m));
-        if crate::uci::move_to_uci(m) == "b3b4" {
-            is_b4_legal = true;
-        }
     }
-    // We won't assert, we just want to see the output
-    // assert!(!is_b4_legal, "b3b4 should be illegal after the sequence");
+    let is_b4_legal = legals.iter().any(|m| crate::uci::move_to_uci(*m) == "b3b4");
+    assert!(!is_b4_legal, "b3b4 should be illegal after the sequence");
 }
 
 #[test]
