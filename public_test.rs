@@ -1429,24 +1429,24 @@ mod tt_tests {
 }
 
 pub mod bitboard_tests {
-    use crate::bitboard::Bitboard;
+    use crate::bitboard::{Bitboard, Index::*};
 
     #[test]
     fn test_set_clear_test() {
         let mut bb = Bitboard::empty();
         assert!(bb.is_empty());
         
-        bb.set_bit(0); // A1
+        bb.set_bit(A1 as u8); // A1
         assert!(!bb.is_empty());
-        assert!(bb.test_bit(0));
-        assert!(!bb.test_bit(1));
+        assert!(bb.test_bit(A1 as u8));
+        assert!(!bb.test_bit(B1 as u8));
 
-        bb.set_bit(63); // H8
-        assert!(bb.test_bit(63));
+        bb.set_bit(H8 as u8); // H8
+        assert!(bb.test_bit(H8 as u8));
 
-        bb.clear_bit(0);
-        assert!(!bb.test_bit(0));
-        assert!(bb.test_bit(63));
+        bb.clear_bit(A1 as u8);
+        assert!(!bb.test_bit(A1 as u8));
+        assert!(bb.test_bit(H8 as u8));
     }
 
     #[test]
@@ -1463,18 +1463,18 @@ pub mod bitboard_tests {
     #[test]
     fn test_lsb_and_pop_lsb() {
         let mut bb = Bitboard::empty();
-        bb.set_bit(8); // A2
-        bb.set_bit(16); // A3
-        bb.set_bit(63); // H8
+        bb.set_bit(A2 as u8); // A2
+        bb.set_bit(A3 as u8); // A3
+        bb.set_bit(H8 as u8); // H8
 
-        assert_eq!(bb.lsb(), 8);
-        assert_eq!(bb.pop_lsb(), 8);
+        assert_eq!(bb.lsb(), A2 as u8);
+        assert_eq!(bb.pop_lsb(), A2 as u8);
         
-        assert_eq!(bb.lsb(), 16);
-        assert_eq!(bb.pop_lsb(), 16);
+        assert_eq!(bb.lsb(), A3 as u8);
+        assert_eq!(bb.pop_lsb(), A3 as u8);
 
-        assert_eq!(bb.lsb(), 63);
-        assert_eq!(bb.pop_lsb(), 63);
+        assert_eq!(bb.lsb(), H8 as u8);
+        assert_eq!(bb.pop_lsb(), H8 as u8);
 
         assert!(bb.is_empty());
     }
@@ -1537,3 +1537,57 @@ pub mod bitboard_tests {
         assert!(down.test_bit(8));
     }
 }
+
+pub mod attacks_tests {
+    use crate::attacks::*;
+    use crate::bitboard::Index::*;
+
+    #[test]
+    fn test_king_attacks() {
+        // King at A1
+        let king_a1 = KING_ATTACKS[A1 as usize];
+        assert!(king_a1.test_bit(B1 as u8));
+        assert!(king_a1.test_bit(A2 as u8));
+        assert!(king_a1.test_bit(B2 as u8));
+        assert_eq!(king_a1.popcount(), 3);
+        
+        // King at D4
+        let king_d4 = KING_ATTACKS[D4 as usize];
+        assert_eq!(king_d4.popcount(), 8);
+        assert!(king_d4.test_bit(C4 as u8));
+        assert!(king_d4.test_bit(E4 as u8));
+        assert!(king_d4.test_bit(D5 as u8));
+    }
+
+    #[test]
+    fn test_knight_attacks() {
+        // Knight at D4
+        let knight_d4 = KNIGHT_ATTACKS[D4 as usize];
+        assert_eq!(knight_d4.popcount(), 8);
+        assert!(knight_d4.test_bit(E6 as u8));
+        assert!(knight_d4.test_bit(C6 as u8));
+        assert!(knight_d4.test_bit(F5 as u8));
+        
+        // Knight at A1
+        let knight_a1 = KNIGHT_ATTACKS[A1 as usize];
+        assert_eq!(knight_a1.popcount(), 2);
+        assert!(knight_a1.test_bit(C2 as u8));
+        assert!(knight_a1.test_bit(B3 as u8));
+    }
+
+    #[test]
+    fn test_pawn_attacks() {
+        // White pawn at D2
+        let w_pawn = WHITE_PAWN_ATTACKS[D2 as usize];
+        assert_eq!(w_pawn.popcount(), 2);
+        assert!(w_pawn.test_bit(C3 as u8));
+        assert!(w_pawn.test_bit(E3 as u8));
+
+        // Black pawn at H7
+        let b_pawn = BLACK_PAWN_ATTACKS[H7 as usize];
+        assert_eq!(b_pawn.popcount(), 1); // Only G6, H file edge
+        assert!(b_pawn.test_bit(G6 as u8));
+    }
+}
+
+
