@@ -385,6 +385,7 @@ pub mod move_tests {
         let (b3_col, b3_row) = get_col_and_row(B3 as u8);
         // Put a black piece on b3 so it's a valid capture square
         pos.set_piece(b3_row as usize, b3_col as usize, Some(BLACK_KNIGHT));
+        pos.compute_scores();
 
         let m = parse_move_algebraic("cb3", &pos).unwrap();
         assert_eq!(m.from, C2 as u8);
@@ -415,6 +416,8 @@ pub mod position_tests {
         expected.turn = PieceColor::Black;
         expected.last_move = Some(e4);
         expected.hash = position.hash;
+        expected.compute_scores();
+        position.compute_scores();
         assert_eq!(position, expected);
     }
 
@@ -432,6 +435,8 @@ pub mod position_tests {
         expected.turn = PieceColor::Black;
         expected.last_move = Some(ef5);
         expected.hash = position.hash;
+        expected.compute_scores();
+        position.compute_scores();
         assert_eq!(position, expected);
     }
 
@@ -513,6 +518,7 @@ pub mod position_tests {
         let (e4_col, e4_row) = get_col_and_row(E4 as u8);
         // Rook on same file (e4) attacks king on e1
         pos.set_piece(e4_row as usize, e4_col as usize, Some(BLACK_ROOK));
+        pos.compute_scores();
         assert!(is_in_check(pos, PieceColor::White));
     }
 
@@ -528,6 +534,7 @@ pub mod position_tests {
         let (d2_col, d2_row) = get_col_and_row(D2 as u8);
         // Black pawn attacks diagonally upward (toward higher row index)
         pos.set_piece(d2_row as usize, d2_col as usize, Some(BLACK_PAWN));
+        pos.compute_scores();
         assert!(is_in_check(pos, PieceColor::White));
     }
 
@@ -538,8 +545,10 @@ pub mod position_tests {
         let (e3_col, e3_row) = get_col_and_row(E3 as u8);
         // Rook on e4 would attack king on e1...
         pos.set_piece(e4_row as usize, e4_col as usize, Some(BLACK_ROOK));
+        pos.compute_scores();
         // ...but white pawn on e3 blocks the line
         pos.set_piece(e3_row as usize, e3_col as usize, Some(WHITE_PAWN));
+        pos.compute_scores();
         assert!(!is_in_check(pos, PieceColor::White));
     }
 
@@ -605,6 +614,7 @@ pub mod position_tests {
         pos.white_long_castle = true;
         let (e1_col, e1_row) = get_col_and_row(E1 as u8);
         pos.set_piece(e1_row as usize, e1_col as usize, Some(WHITE_KING));
+        pos.compute_scores();
 
         make_move(&mut pos, Move::build(WHITE_KING, E1 as u8, E2 as u8));
         assert!(!pos.white_short_castle);
@@ -811,6 +821,7 @@ pub mod position_tests {
         pos.white_long_castle = true;
         let (e1_col, e1_row) = get_col_and_row(E1 as u8);
         pos.set_piece(e1_row as usize, e1_col as usize, Some(WHITE_KING));
+        pos.compute_scores();
         let original = pos;
         // Move king: loses both castle rights
         let kg1 = Move::build(WHITE_KING, E1 as u8, E2 as u8);
@@ -888,6 +899,7 @@ pub mod eval_tests {
         let mut pos = start_position();
         let (e7_col, e7_row) = get_col_and_row(crate::square::Squares::E7 as u8);
         pos.set_piece(e7_row as usize, e7_col as usize, None);
+        pos.compute_scores();
         assert!(
             evaluate(pos) > 50,
             "White should have positive score after Black loses a pawn"
@@ -899,6 +911,7 @@ pub mod eval_tests {
         let mut pos = start_position();
         let (g1_col, g1_row) = get_col_and_row(crate::square::Squares::G1 as u8);
         pos.set_piece(g1_row as usize, g1_col as usize, None);
+        pos.compute_scores();
         pos.turn = PieceColor::Black;
         assert!(
             evaluate(pos) > 200,
@@ -911,6 +924,7 @@ pub mod eval_tests {
         let mut pos = start_position();
         let (d1_col, d1_row) = get_col_and_row(crate::square::Squares::D1 as u8);
         pos.set_piece(d1_row as usize, d1_col as usize, None);
+        pos.compute_scores();
         assert!(
             evaluate(pos) < -500,
             "White should have negative score after losing a queen"

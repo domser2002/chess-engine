@@ -82,23 +82,34 @@ impl Position {
         None
     }
 
+    pub fn add_piece_score(&mut self, piece: Piece, sq: usize) {
+        let (mg, eg, ph) = crate::eval::evaluate_piece_incremental(piece.piece_type as usize, piece.piece_color == PieceColor::White, sq);
+        if piece.piece_color == PieceColor::White {
+            self.mg_score += mg;
+            self.eg_score += eg;
+        } else {
+            self.mg_score -= mg;
+            self.eg_score -= eg;
+        }
+        self.phase += ph;
+    }
+
+    pub fn sub_piece_score(&mut self, piece: Piece, sq: usize) {
+        let (mg, eg, ph) = crate::eval::evaluate_piece_incremental(piece.piece_type as usize, piece.piece_color == PieceColor::White, sq);
+        if piece.piece_color == PieceColor::White {
+            self.mg_score -= mg;
+            self.eg_score -= eg;
+        } else {
+            self.mg_score += mg;
+            self.eg_score += eg;
+        }
+        self.phase -= ph;
+    }
+
     pub fn set_piece(&mut self, row: usize, col: usize, piece: Option<Piece>) {
         let sq = row * 8 + col;
         let mask = 1u64 << sq;
         let not_mask = !mask;
-
-        // If there was a piece here, subtract its score
-        if let Some(old_p) = self.get_piece(row, col) {
-            let (mg, eg, ph) = crate::eval::evaluate_piece_incremental(old_p.piece_type as usize, old_p.piece_color == PieceColor::White, sq);
-            if old_p.piece_color == PieceColor::White {
-                self.mg_score -= mg;
-                self.eg_score -= eg;
-            } else {
-                self.mg_score += mg;
-                self.eg_score += eg;
-            }
-            self.phase -= ph;
-        }
 
         // Clear existing
         self.piece_colors[0].0 &= not_mask;
@@ -110,16 +121,33 @@ impl Position {
         if let Some(p) = piece {
             self.piece_colors[p.piece_color as usize].0 |= mask;
             self.piece_types[p.piece_type as usize].0 |= mask;
-            
-            let (mg, eg, ph) = crate::eval::evaluate_piece_incremental(p.piece_type as usize, p.piece_color == PieceColor::White, sq);
-            if p.piece_color == PieceColor::White {
-                self.mg_score += mg;
-                self.eg_score += eg;
-            } else {
-                self.mg_score -= mg;
-                self.eg_score -= eg;
+        }
+    }
+
+    pub fn compute_scores(&mut self) {
+        self.mg_score = 0;
+        self.eg_score = 0;
+        self.phase = 0;
+        for sq in 0..64 {
+            let bit = 1u64 << sq;
+            let white = self.piece_colors[PieceColor::White as usize].0 & bit;
+            let black = self.piece_colors[PieceColor::Black as usize].0 & bit;
+            if white == 0 && black == 0 { continue; }
+            let is_white = white != 0;
+            for pt in 0..6 {
+                if (self.piece_types[pt].0 & bit) != 0 {
+                    let (mg, eg, ph) = crate::eval::evaluate_piece_incremental(pt, is_white, sq as usize);
+                    if is_white {
+                        self.mg_score += mg;
+                        self.eg_score += eg;
+                    } else {
+                        self.mg_score -= mg;
+                        self.eg_score -= eg;
+                    }
+                    self.phase += ph;
+                    break;
+                }
             }
-            self.phase += ph;
         }
     }
 }
@@ -134,6 +162,9 @@ pub struct UndoInfo {
     pub black_long_castle: bool,
     pub last_move: Option<Move>,
     pub hash: u64,
+    pub mg_score: i32,
+    pub eg_score: i32,
+    pub phase: i32,
 }
 
 /// Stores the state needed to undo a null move.
@@ -256,6 +287,7 @@ pub fn parse_fen(fen: &str) -> Option<Position> {
 
     // Fields 5–6 (halfmove clock, fullmove number) are accepted but not stored.
     pos.hash = crate::zobrist::compute_hash(&pos);
+    pos.compute_scores();
     Some(pos)
 }
 
@@ -684,6 +716,9 @@ pub fn make_move(position: &mut Position, m: Move) -> UndoInfo {
         black_long_castle: position.black_long_castle,
         last_move: position.last_move,
         hash: position.hash,
+        mg_score: position.mg_score,
+        eg_score: position.eg_score,
+        phase: position.phase,
     };
 
     // Handle castling moves first (they use sentinel squares, not real coordinates)
@@ -707,14 +742,19 @@ pub fn make_move(position: &mut Position, m: Move) -> UndoInfo {
         position.set_piece(king_rank, king_to_col, Some(m.piece));
         // Move rook
         position.set_piece(king_rank, rook_from_col, None);
+        let rook_piece = match m.piece.piece_color {
+            PieceColor::White => WHITE_ROOK,
+            PieceColor::Black => BLACK_ROOK,
+        };
         position.set_piece(
             king_rank,
             rook_to_col,
-            match m.piece.piece_color {
-                PieceColor::White => Some(WHITE_ROOK),
-                PieceColor::Black => Some(BLACK_ROOK),
-            },
+            Some(rook_piece),
         );
+        position.sub_piece_score(m.piece, king_rank * 8 + 4);
+        position.add_piece_score(m.piece, king_rank * 8 + king_to_col);
+        position.sub_piece_score(rook_piece, king_rank * 8 + rook_from_col);
+        position.add_piece_score(rook_piece, king_rank * 8 + rook_to_col);
 
         // Lost castle rights for this side
         if m.piece.piece_color == PieceColor::White {
@@ -737,6 +777,7 @@ pub fn make_move(position: &mut Position, m: Move) -> UndoInfo {
 
     let (from_col_idx, from_row_idx) = get_col_and_row(m.from);
     let (to_col_idx, to_row_idx) = get_col_and_row(m.to);
+    position.sub_piece_score(m.piece, from_row_idx as usize * 8 + from_col_idx as usize);
     let maybe_piece_on_src: Option<Piece> =
         position.get_piece(from_row_idx as usize, from_col_idx as usize);
     match maybe_piece_on_src {
@@ -751,6 +792,7 @@ pub fn make_move(position: &mut Position, m: Move) -> UndoInfo {
                 // Save captured piece
                 let mut captured_undo = undo;
                 captured_undo.captured = Some(dst_piece);
+                position.sub_piece_score(dst_piece, to_row_idx as usize * 8 + to_col_idx as usize);
                 // If a rook is captured, lose the corresponding castle right
                 if dst_piece.piece_type == PieceType::Rook {
                     if to_row_idx == 0 && to_col_idx == 0 {
@@ -772,6 +814,7 @@ pub fn make_move(position: &mut Position, m: Move) -> UndoInfo {
                             to_col_idx as usize,
                             Some(promoted),
                         );
+                        position.add_piece_score(promoted, to_row_idx as usize * 8 + to_col_idx as usize);
                     }
                     None => {
                         position.set_piece(
@@ -779,6 +822,7 @@ pub fn make_move(position: &mut Position, m: Move) -> UndoInfo {
                             to_col_idx as usize,
                             Some(src_piece),
                         );
+                        position.add_piece_score(src_piece, to_row_idx as usize * 8 + to_col_idx as usize);
                     }
                 }
                 // Update castle rights when king or rook moves
@@ -824,6 +868,7 @@ pub fn make_move(position: &mut Position, m: Move) -> UndoInfo {
                             to_col_idx as usize,
                             Some(promoted),
                         );
+                        position.add_piece_score(promoted, to_row_idx as usize * 8 + to_col_idx as usize);
                     }
                     None => {
                         position.set_piece(
@@ -831,6 +876,7 @@ pub fn make_move(position: &mut Position, m: Move) -> UndoInfo {
                             to_col_idx as usize,
                             Some(src_piece),
                         );
+                        position.add_piece_score(src_piece, to_row_idx as usize * 8 + to_col_idx as usize);
                     }
                 }
                 // We don't need a separate "captured_undo" for en passant because
@@ -917,6 +963,9 @@ pub fn unmake_move(position: &mut Position, m: Move, undo: UndoInfo) {
                 PieceColor::Black => Some(BLACK_ROOK),
             },
         );
+        position.mg_score = undo.mg_score;
+        position.eg_score = undo.eg_score;
+        position.phase = undo.phase;
         return;
     }
 
@@ -965,6 +1014,10 @@ pub fn unmake_move(position: &mut Position, m: Move, undo: UndoInfo) {
             }
         }
     }
+    
+    position.mg_score = undo.mg_score;
+    position.eg_score = undo.eg_score;
+    position.phase = undo.phase;
 }
 
 impl Position {
