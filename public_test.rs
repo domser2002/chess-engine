@@ -1427,3 +1427,113 @@ mod tt_tests {
         assert!(hashfull <= 1000);
     }
 }
+
+pub mod bitboard_tests {
+    use crate::bitboard::Bitboard;
+
+    #[test]
+    fn test_set_clear_test() {
+        let mut bb = Bitboard::empty();
+        assert!(bb.is_empty());
+        
+        bb.set_bit(0); // A1
+        assert!(!bb.is_empty());
+        assert!(bb.test_bit(0));
+        assert!(!bb.test_bit(1));
+
+        bb.set_bit(63); // H8
+        assert!(bb.test_bit(63));
+
+        bb.clear_bit(0);
+        assert!(!bb.test_bit(0));
+        assert!(bb.test_bit(63));
+    }
+
+    #[test]
+    fn test_popcount() {
+        let mut bb = Bitboard::empty();
+        assert_eq!(bb.popcount(), 0);
+
+        bb.set_bit(5);
+        bb.set_bit(10);
+        bb.set_bit(15);
+        assert_eq!(bb.popcount(), 3);
+    }
+
+    #[test]
+    fn test_lsb_and_pop_lsb() {
+        let mut bb = Bitboard::empty();
+        bb.set_bit(8); // A2
+        bb.set_bit(16); // A3
+        bb.set_bit(63); // H8
+
+        assert_eq!(bb.lsb(), 8);
+        assert_eq!(bb.pop_lsb(), 8);
+        
+        assert_eq!(bb.lsb(), 16);
+        assert_eq!(bb.pop_lsb(), 16);
+
+        assert_eq!(bb.lsb(), 63);
+        assert_eq!(bb.pop_lsb(), 63);
+
+        assert!(bb.is_empty());
+    }
+
+    #[test]
+    fn test_iterator() {
+        let mut bb = Bitboard::empty();
+        bb.set_bit(2);
+        bb.set_bit(4);
+        bb.set_bit(10);
+
+        let mut squares = Vec::new();
+        for sq in bb {
+            squares.push(sq);
+        }
+
+        assert_eq!(squares, vec![2, 4, 10]);
+    }
+
+    #[test]
+    fn test_bitwise_ops() {
+        let mut bb1 = Bitboard::empty();
+        bb1.set_bit(0);
+        bb1.set_bit(1);
+
+        let mut bb2 = Bitboard::empty();
+        bb2.set_bit(1);
+        bb2.set_bit(2);
+
+        let and_res = bb1 & bb2;
+        assert!(and_res.test_bit(1));
+        assert_eq!(and_res.popcount(), 1);
+
+        let or_res = bb1 | bb2;
+        assert!(or_res.test_bit(0));
+        assert!(or_res.test_bit(1));
+        assert!(or_res.test_bit(2));
+        assert_eq!(or_res.popcount(), 3);
+
+        let xor_res = bb1 ^ bb2;
+        assert!(xor_res.test_bit(0));
+        assert!(!xor_res.test_bit(1)); // 1 is common, so cancelled out
+        assert!(xor_res.test_bit(2));
+        assert_eq!(xor_res.popcount(), 2);
+
+        let mut bb3 = bb1;
+        bb3 &= bb2;
+        assert_eq!(bb3, and_res);
+    }
+
+    #[test]
+    fn test_shifts() {
+        let mut bb = Bitboard::empty();
+        bb.set_bit(8);
+
+        let up = bb << 8; // North
+        assert!(up.test_bit(16));
+
+        let down = up >> 8; // South
+        assert!(down.test_bit(8));
+    }
+}
