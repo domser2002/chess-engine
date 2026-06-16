@@ -66,6 +66,17 @@ Algorithmic overhaul achieving a massive speedup in search performance. Advanced
 - ✅ MultiPV Search — supports `setoption name MultiPV value X` to search and output the top `X` lines sequentially
 - ✅ 131 unit tests (up from 124)
 
+## v0.6.1
+
+Architectural overhaul completing the transition to a pure bitboard engine. The legacy 2D array structures have been eliminated, and performance is now strictly O(1) for board state evaluation.
+
+- ✅ **Bitboard Architecture** — replaced the legacy `[[Option<Piece>; 8]; 8]` 2D array with 64-bit integer bitboards (`u64`), natively supporting fast bitwise operations.
+- ✅ **Incremental Evaluation** — replaced the O(64) leaf-node evaluation loop with an O(1) state tracker. The `mg_score`, `eg_score`, and `phase` are updated dynamically during `make_move` using Piece-Square Tables (PST).
+- ✅ **Optimized Move Execution** — rewrote `make_move` to apply bitboard XOR/AND operations natively, completely bypassing heavy generic piece lookup overhead.
+- ✅ **MVV-LVA Bitwise Refactor** — improved move sorting by using native bitwise `AND` on bitboards to identify captured pieces, removing legacy array getter dependencies.
+- ✅ **Robust Time Management** — implemented a recursive search unwinding mechanism (`TimeOut` error) to strictly honor UCI time limits and prevent sudden engine hangups or losses on time.
+- ✅ 145 unit tests (up from 131), guaranteeing search stability across purely bitboard-based regression tests.
+
 ## How to Play
 
 ### Interactive mode (terminal)
@@ -98,8 +109,8 @@ Or load the binary at `target/release/chess-engine` in any UCI-compatible GUI.
 
 ### Key design decisions
 
-- **2D array board representation**: `[[Option<Piece>; 8]; 8]` — the C-like approach, intentional for learning
-- **Position is Copy**: ~72 bytes, fits in two cache lines. Both copy-make (in `legal_moves`) and make-unmake (in `search`) are used
+- **Bitboard representation**: `u64` bitmasks — replaced the legacy 2D array approach to allow lightning-fast bitwise operations.
+- **Position is Copy**: Fits in a few cache lines. Both copy-make (in `legal_moves`) and make-unmake (in `search`) are used
 - **Direction tables**: Sliding piece moves use direction constants (`ROOK_DIRS`, `BISHOP_DIRS`) and a shared `add_sliding_moves` function instead of N separate functions per direction
 - **Pseudo-legal then filter**: `pseudo_legal_moves` generates moves without king safety, then `legal_moves` filters via copy-make-check
 - **Iterative deepening with time guard**: Search checks the clock at each root move; only fully completed depth results are kept
@@ -110,4 +121,4 @@ Or load the binary at `target/release/chess-engine` in any UCI-compatible GUI.
 cargo test
 ```
 
-All 131 tests should pass.
+All 145 tests should pass.
