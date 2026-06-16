@@ -4,7 +4,6 @@ use crate::piece::{
     PieceType, WHITE_BISHOP, WHITE_KING, WHITE_KNIGHT, WHITE_PAWN, WHITE_QUEEN, WHITE_ROOK,
     get_unicode_char,
 };
-use crate::square::Squares::{C1, C8, D1, D8, E1, E8, F1, F8, G1, G8};
 use crate::square::{COL_NUM, ROW_NUM, get_col_and_row, get_square_idx};
 use colored::Colorize;
 

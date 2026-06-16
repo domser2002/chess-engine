@@ -1748,3 +1748,99 @@ pub mod attacks_tests {
         assert_eq!(queen_e4.popcount(), 27); // 14 (rook) + 13 (bishop) = 27
     }
 }
+
+#[test]
+fn repro_illegal_king_move() {
+    let mut pos = crate::position::parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
+    let moves = "e2e4 b8c6 d2d4 a7a6 d4d5 c6b8 g1f3 e7e6 d5e6 d7e6 d1d8 e8d8 b1c3 b8d7 c1f4 f8d6 e4e5 d6f8 e1c1 b7b5 f1d3 c8b7 f3g5 d8e8 d3e4 d7c5 e4b7 c5b7 h1e1 b5b4 c3e4 h7h6 g5f3 a6a5 f4e3 g8e7 a2a3 a8c8 a3b4 a5b4 h2h3 e7d5 e3d4 c8d8 c2c4 d5f4 g2g3 f4g2 e1g1 b7a5 g1g2 c7c5 d4e3 a5b3 c1c2 b3d4 f3d4 c5d4 e3d4 f7f5 e5f6 e6e5 d4e5 h8g8 f6f7 e8f7 d1d8 g7g6 c4c5 f8c5 d8g8 g6g5 g8g7 f7e6 e4c5 e6d5 c5d3 g5g4 h3g4 d5c6 c2b3 c6b5 g7g6 h6h5";
+    for mv_str in moves.split_whitespace() {
+        let legals = crate::position::legal_moves(pos);
+        let m = legals.into_iter().find(|m| crate::uci::move_to_uci(*m) == mv_str).unwrap();
+        crate::position::make_move(&mut pos, m);
+    }
+    let legals = crate::position::legal_moves(pos);
+    let mut is_b4_legal = false;
+    for m in legals {
+        if crate::uci::move_to_uci(m) == "b3b4" {
+            is_b4_legal = true;
+            let mut pos_copy = pos;
+            crate::position::make_move(&mut pos_copy, m);
+            let in_check = crate::position::is_in_check(pos_copy, pos.turn);
+            println!("In check after b3b4? {}", in_check);
+        }
+    }
+    assert!(!is_b4_legal, "b3b4 should be illegal");
+}
+
+#[test]
+fn repro_illegal_king_move_3() {
+    let mut pos = crate::position::parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
+    let moves = "e2e4 b8c6 d2d4 a7a6 d4d5 c6b8 g1f3 e7e6 d5e6 d7e6 d1d8 e8d8 b1c3 b8d7 c1f4 f8d6 e4e5 d6f8 e1c1 b7b5 f1d3 c8b7 f3g5 d8e8 d3e4 d7c5 e4b7 c5b7 h1e1 b5b4 c3e4 h7h6 g5f3 a6a5 f4e3 g8e7 a2a3 a8c8 a3b4 a5b4 h2h3 e7d5 e3d4 c8d8 c2c4 d5f4 g2g3 f4g2 e1g1 b7a5 g1g2 c7c5 d4e3 a5b3 c1c2 b3d4 f3d4 c5d4 e3d4 f7f5 e5f6 e6e5 d4e5 h8g8 f6f7 e8f7 d1d8 g7g6 c4c5 f8c5 d8g8 g6g5 g8g7 f7e6 e4c5 e6d5 c5d3 g5g4 h3g4 d5c6 c2b3 c6b5 g7g6 h6h5";
+    for mv_str in moves.split_whitespace() {
+        let legals = crate::position::legal_moves(pos);
+        let m = legals.into_iter().find(|m| crate::uci::move_to_uci(*m) == mv_str).unwrap();
+        crate::position::make_move(&mut pos, m);
+    }
+    
+    // Print the fen manually by using our test board:
+    println!("Final internal board:");
+    crate::position::print_position(pos);
+    
+    let legals = crate::position::legal_moves(pos);
+    let mut is_b4_legal = false;
+    println!("Legal moves:");
+    for m in legals {
+        println!("{}", crate::uci::move_to_uci(m));
+        if crate::uci::move_to_uci(m) == "b3b4" {
+            is_b4_legal = true;
+        }
+    }
+    // We won't assert, we just want to see the output
+    // assert!(!is_b4_legal, "b3b4 should be illegal after the sequence");
+}
+
+#[test]
+fn test_hash_sync() {
+    let mut pos = crate::position::parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
+    let moves = "e2e4 b8c6 d2d4 a7a6 d4d5 c6b8 g1f3 e7e6 d5e6 d7e6 d1d8 e8d8 b1c3 b8d7 c1f4 f8d6 e4e5 d6f8 e1c1 b7b5 f1d3 c8b7 f3g5 d8e8 d3e4 d7c5 e4b7 c5b7 h1e1 b5b4 c3e4 h7h6 g5f3 a6a5 f4e3 g8e7 a2a3 a8c8 a3b4 a5b4 h2h3 e7d5 e3d4 c8d8 c2c4 d5f4 g2g3 f4g2 e1g1 b7a5 g1g2 c7c5 d4e3 a5b3 c1c2 b3d4 f3d4 c5d4 e3d4 f7f5 e5f6 e6e5 d4e5 h8g8 f6f7 e8f7 d1d8 g7g6 c4c5 f8c5 d8g8 g6g5 g8g7 f7e6 e4c5 e6d5 c5d3 g5g4 h3g4 d5c6 c2b3 c6b5 g7g6 h6h5";
+    for mv_str in moves.split_whitespace() {
+        let legals = crate::position::legal_moves(pos);
+        let m = legals.into_iter().find(|m| crate::uci::move_to_uci(*m) == mv_str).unwrap();
+        crate::position::make_move(&mut pos, m);
+        let computed = crate::zobrist::compute_hash(&pos);
+        assert_eq!(pos.hash, computed, "Hash out of sync after move {}! Incremental: {:x}, Computed: {:x}", mv_str, pos.hash, computed);
+    }
+}
+
+#[test]
+fn test_engine_parsing_and_search() {
+    let line = "position fen rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1 moves e2e4 b8c6 d2d4 a7a6 d4d5 c6b8 g1f3 e7e6 d5e6 d7e6 d1d8 e8d8 b1c3 b8d7 c1f4 f8d6 e4e5 d6f8 e1c1 b7b5 f1d3 c8b7 f3g5 d8e8 d3e4 d7c5 e4b7 c5b7 h1e1 b5b4 c3e4 h7h6 g5f3 a6a5 f4e3 g8e7 a2a3 a8c8 a3b4 a5b4 h2h3 e7d5 e3d4 c8d8 c2c4 d5f4 g2g3 f4g2 e1g1 b7a5 g1g2 c7c5 d4e3 a5b3 c1c2 b3d4 f3d4 c5d4 e3d4 f7f5 e5f6 e6e5 d4e5 h8g8 f6f7 e8f7 d1d8 g7g6 c4c5 f8c5 d8g8 g6g5 g8g7 f7e6 e4c5 e6d5 c5d3 g5g4 h3g4 d5c6 c2b3 c6b5 g7g6 h6h5";
+    let mut parts = line.split_whitespace();
+    parts.next(); // "position"
+    parts.next(); // "fen"
+    let mut fen = String::new();
+    for _ in 0..6 {
+        fen.push_str(parts.next().unwrap());
+        fen.push(' ');
+    }
+    let mut pos = crate::position::parse_fen(&fen.trim()).unwrap();
+    if parts.next() == Some("moves") {
+        for mv_str in parts {
+            if let Some(m) = crate::r#move::parse_move_uci(mv_str, &pos) {
+                crate::position::make_move(&mut pos, m);
+            } else {
+                panic!("Failed to parse move: {}", mv_str);
+            }
+        }
+    }
+    
+    println!("Final position before search:");
+    crate::position::print_position(pos);
+    
+    let legals = crate::position::legal_moves(pos);
+    println!("Legals:");
+    for m in &legals {
+        println!("{}", crate::uci::move_to_uci(*m));
+    }
+    assert!(!legals.iter().any(|m| crate::uci::move_to_uci(*m) == "b3b4"));
+}

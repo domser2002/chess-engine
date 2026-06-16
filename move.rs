@@ -122,16 +122,32 @@ fn parse_square(s: &str) -> Option<u8> {
 /// Parse a move in UCI coordinate notation: "e2e4", "g1f3", "e7e8q".
 pub fn parse_move_uci(s: &str, position: &Position) -> Option<Move> {
     if (s == "e1g1" || s == "e1h1") && position.turn == PieceColor::White {
-        return Some(Move::build_short_castling(PieceColor::White));
+        if let Some(p) = position.get_piece(0, 4) {
+            if p.piece_type == PieceType::King {
+                return Some(Move::build_short_castling(PieceColor::White));
+            }
+        }
     }
     if (s == "e8g8" || s == "e8h8") && position.turn == PieceColor::Black {
-        return Some(Move::build_short_castling(PieceColor::Black));
+        if let Some(p) = position.get_piece(7, 4) {
+            if p.piece_type == PieceType::King {
+                return Some(Move::build_short_castling(PieceColor::Black));
+            }
+        }
     }
     if (s == "e1c1" || s == "e1a1") && position.turn == PieceColor::White {
-        return Some(Move::build_long_castling(PieceColor::White));
+        if let Some(p) = position.get_piece(0, 4) {
+            if p.piece_type == PieceType::King {
+                return Some(Move::build_long_castling(PieceColor::White));
+            }
+        }
     }
     if (s == "e8c8" || s == "e8a8") && position.turn == PieceColor::Black {
-        return Some(Move::build_long_castling(PieceColor::Black));
+        if let Some(p) = position.get_piece(7, 4) {
+            if p.piece_type == PieceType::King {
+                return Some(Move::build_long_castling(PieceColor::Black));
+            }
+        }
     }
 
     let (from_str, rest) = s.split_at(2);
