@@ -8,7 +8,7 @@ const NOT_GH: u64 = 0x3f3f3f3f3f3f3f3f;
 const fn king_attacks(square: u8) -> u64 {
     let bb = 1u64 << square;
     let mut attacks = 0;
-    
+
     attacks |= (bb << 8) | (bb >> 8); // N, S
     attacks |= (bb << 1) & NOT_A; // E
     attacks |= (bb >> 1) & NOT_H; // W
@@ -16,7 +16,7 @@ const fn king_attacks(square: u8) -> u64 {
     attacks |= (bb << 7) & NOT_H; // NW
     attacks |= (bb >> 7) & NOT_A; // SE
     attacks |= (bb >> 9) & NOT_H; // SW
-    
+
     attacks
 }
 
@@ -27,11 +27,11 @@ const fn knight_attacks(square: u8) -> u64 {
     attacks |= (bb << 17) & NOT_A; // NNE
     attacks |= (bb << 15) & NOT_H; // NNW
     attacks |= (bb << 10) & NOT_AB; // EEN
-    attacks |= (bb << 6)  & NOT_GH; // WWN
-    
+    attacks |= (bb << 6) & NOT_GH; // WWN
+
     attacks |= (bb >> 15) & NOT_A; // SSE
     attacks |= (bb >> 17) & NOT_H; // SSW
-    attacks |= (bb >> 6)  & NOT_AB; // EES
+    attacks |= (bb >> 6) & NOT_AB; // EES
     attacks |= (bb >> 10) & NOT_GH; // WWS
 
     attacks
@@ -96,8 +96,8 @@ pub const BLACK_PAWN_ATTACKS: [Bitboard; 64] = {
 
 // --- MAGIC BITBOARDS ---
 
+use crate::magics::{BISHOP_MAGICS, BISHOP_MASKS, ROOK_MAGICS, ROOK_MASKS};
 use std::sync::OnceLock;
-use crate::magics::{ROOK_MAGICS, ROOK_MASKS, BISHOP_MAGICS, BISHOP_MASKS};
 
 static ROOK_TABLE: OnceLock<Vec<Vec<Bitboard>>> = OnceLock::new();
 static BISHOP_TABLE: OnceLock<Vec<Vec<Bitboard>>> = OnceLock::new();
@@ -118,10 +118,30 @@ fn classic_rook_attacks(sq: u8, block: u64) -> u64 {
     let r = sq / 8;
     let c = sq % 8;
     let mut attacks = 0u64;
-    for i in (r + 1)..8 { attacks |= 1u64 << (i * 8 + c); if (block & (1u64 << (i * 8 + c))) != 0 { break; } }
-    for i in (0..r).rev() { attacks |= 1u64 << (i * 8 + c); if (block & (1u64 << (i * 8 + c))) != 0 { break; } }
-    for j in (c + 1)..8 { attacks |= 1u64 << (r * 8 + j); if (block & (1u64 << (r * 8 + j))) != 0 { break; } }
-    for j in (0..c).rev() { attacks |= 1u64 << (r * 8 + j); if (block & (1u64 << (r * 8 + j))) != 0 { break; } }
+    for i in (r + 1)..8 {
+        attacks |= 1u64 << (i * 8 + c);
+        if (block & (1u64 << (i * 8 + c))) != 0 {
+            break;
+        }
+    }
+    for i in (0..r).rev() {
+        attacks |= 1u64 << (i * 8 + c);
+        if (block & (1u64 << (i * 8 + c))) != 0 {
+            break;
+        }
+    }
+    for j in (c + 1)..8 {
+        attacks |= 1u64 << (r * 8 + j);
+        if (block & (1u64 << (r * 8 + j))) != 0 {
+            break;
+        }
+    }
+    for j in (0..c).rev() {
+        attacks |= 1u64 << (r * 8 + j);
+        if (block & (1u64 << (r * 8 + j))) != 0 {
+            break;
+        }
+    }
     attacks
 }
 
@@ -129,12 +149,14 @@ fn classic_bishop_attacks(sq: u8, block: u64) -> u64 {
     let r = sq as i32 / 8;
     let c = sq as i32 % 8;
     let mut attacks = 0u64;
-    for (tr, tc) in [(1,1), (1,-1), (-1,1), (-1,-1)].iter() {
+    for (tr, tc) in [(1, 1), (1, -1), (-1, 1), (-1, -1)].iter() {
         let mut nr = r + tr;
         let mut nc = c + tc;
         while nr >= 0 && nr <= 7 && nc >= 0 && nc <= 7 {
             attacks |= 1u64 << (nr * 8 + nc);
-            if (block & (1u64 << (nr * 8 + nc))) != 0 { break; }
+            if (block & (1u64 << (nr * 8 + nc))) != 0 {
+                break;
+            }
             nr += tr;
             nc += tc;
         }

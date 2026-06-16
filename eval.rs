@@ -1,4 +1,4 @@
-use crate::piece::{Piece, PieceType, PieceColor};
+use crate::piece::{Piece, PieceColor, PieceType};
 use crate::position::Position;
 
 /// Piece material values in centipawns.
@@ -176,11 +176,11 @@ pub fn evaluate(position: Position) -> i32 {
         for col in 0..8 {
             if let Some(piece) = position.get_piece(row, col) {
                 let base_val = piece_value(piece);
-                
+
                 // Add piece-square table value
                 let white_idx = (7 - row) * 8 + col; // From White's perspective
                 let black_idx = row * 8 + col; // Flipped for Black
-                
+
                 let (mg_pst, eg_pst) = match piece.piece_color {
                     PieceColor::White => match piece.piece_type {
                         PieceType::Pawn => (MG_PAWN[white_idx], EG_PAWN[white_idx]),
@@ -199,7 +199,7 @@ pub fn evaluate(position: Position) -> i32 {
                         PieceType::King => (MG_KING[black_idx], EG_KING[black_idx]),
                     },
                 };
-                
+
                 // Calculate phase (Knights=1, Bishops=1, Rooks=2, Queens=4)
                 match piece.piece_type {
                     PieceType::Knight | PieceType::Bishop => phase += 1,
@@ -218,7 +218,7 @@ pub fn evaluate(position: Position) -> i32 {
             }
         }
     }
-    
+
     let phase = phase.min(24);
     let score = (mg_score * phase + eg_score * (24 - phase)) / 24;
 

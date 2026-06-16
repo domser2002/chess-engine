@@ -1,20 +1,20 @@
-mod r#move;
-mod position;
-mod piece;
-mod square;
-mod uci;
-mod play;
-mod eval;
-mod search;
-pub mod zobrist;
-pub mod tt;
-pub mod bitboard;
-pub mod magics;
 pub mod attacks;
-mod perft;
 mod bench;
+pub mod bitboard;
+mod eval;
+pub mod magics;
+mod r#move;
+mod perft;
+mod piece;
+mod play;
+mod position;
 #[cfg(test)]
 mod public_test;
+mod search;
+mod square;
+pub mod tt;
+mod uci;
+pub mod zobrist;
 
 #[cfg(not(test))]
 use std::env;

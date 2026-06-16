@@ -1,5 +1,5 @@
+use crate::position::{Position, legal_moves, make_move, start_position, unmake_move};
 use std::time::Instant;
-use crate::position::{Position, legal_moves, make_move, unmake_move, start_position};
 
 pub fn perft(pos: &mut Position, depth: u8) -> u64 {
     if depth == 0 {
@@ -26,16 +26,16 @@ pub fn divide(pos: &mut Position, depth: u8) {
     let start_time = Instant::now();
     let moves = legal_moves(*pos);
     let mut total_nodes = 0;
-    
+
     for m in moves {
         let undo = make_move(pos, m);
         let nodes = perft(pos, depth - 1);
         unmake_move(pos, m, undo);
-        
+
         println!("{}: {}", crate::uci::move_to_uci(m), nodes);
         total_nodes += nodes;
     }
-    
+
     let duration = start_time.elapsed();
     let nps = if duration.as_secs_f64() > 0.0 {
         #[allow(clippy::cast_precision_loss)]
@@ -44,7 +44,7 @@ pub fn divide(pos: &mut Position, depth: u8) {
     } else {
         0.0
     };
-    
+
     println!("Total nodes: {total_nodes}");
     println!("Time: {:.2}s", duration.as_secs_f64());
     println!("NPS: {nps:.0}");
@@ -73,7 +73,9 @@ mod tests {
     #[test]
     fn perft_kiwipete() {
         // Kiwipete is a famous perft position with a lot of tactical complexity early on
-        let mut pos = parse_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1").unwrap();
+        let mut pos =
+            parse_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1")
+                .unwrap();
         assert_eq!(perft(&mut pos, 1), 48);
         assert_eq!(perft(&mut pos, 2), 2039);
         assert_eq!(perft(&mut pos, 3), 97862);

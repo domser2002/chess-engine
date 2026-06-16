@@ -1,10 +1,15 @@
-use crate::piece::{Piece, PieceColor, WHITE_ROOK, WHITE_KNIGHT, WHITE_BISHOP, WHITE_QUEEN, WHITE_KING, WHITE_PAWN, BLACK_PAWN, BLACK_ROOK, BLACK_KNIGHT, BLACK_BISHOP, BLACK_QUEEN, BLACK_KING, get_unicode_char, PieceType};
-use crate::r#move::{Move, SHORT_CASTLING_SQUARE, LONG_CASTLING_SQUARE};
-use crate::square::{COL_NUM, ROW_NUM, get_square_idx, get_col_and_row};
-use crate::square::Squares::{E1, E8, F1, F8, G1, G8, D1, D8, C1, C8};
+use crate::r#move::{LONG_CASTLING_SQUARE, Move, SHORT_CASTLING_SQUARE};
+use crate::piece::{
+    BLACK_BISHOP, BLACK_KING, BLACK_KNIGHT, BLACK_PAWN, BLACK_QUEEN, BLACK_ROOK, Piece, PieceColor,
+    PieceType, WHITE_BISHOP, WHITE_KING, WHITE_KNIGHT, WHITE_PAWN, WHITE_QUEEN, WHITE_ROOK,
+    get_unicode_char,
+};
+use crate::square::Squares::{C1, C8, D1, D8, E1, E8, F1, F8, G1, G8};
+use crate::square::{COL_NUM, ROW_NUM, get_col_and_row, get_square_idx};
 use colored::Colorize;
 
 use crate::bitboard::Bitboard;
+use crate::attacks::{KNIGHT_ATTACKS, KING_ATTACKS, WHITE_PAWN_ATTACKS, BLACK_PAWN_ATTACKS, get_rook_attacks, get_bishop_attacks, get_queen_attacks};
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub struct Position {
@@ -25,30 +30,52 @@ impl Position {
         let bit = 1u64 << sq;
         let white = self.piece_colors[PieceColor::White as usize].0 & bit;
         let black = self.piece_colors[PieceColor::Black as usize].0 & bit;
-        
+
         if white == 0 && black == 0 {
             return None;
         }
-        
-        let color = if white != 0 { PieceColor::White } else { PieceColor::Black };
-        
+
+        let color = if white != 0 {
+            PieceColor::White
+        } else {
+            PieceColor::Black
+        };
+
         if (self.piece_types[PieceType::Pawn as usize].0 & bit) != 0 {
-            return Some(Piece { piece_type: PieceType::Pawn, piece_color: color });
+            return Some(Piece {
+                piece_type: PieceType::Pawn,
+                piece_color: color,
+            });
         }
         if (self.piece_types[PieceType::Knight as usize].0 & bit) != 0 {
-            return Some(Piece { piece_type: PieceType::Knight, piece_color: color });
+            return Some(Piece {
+                piece_type: PieceType::Knight,
+                piece_color: color,
+            });
         }
         if (self.piece_types[PieceType::Bishop as usize].0 & bit) != 0 {
-            return Some(Piece { piece_type: PieceType::Bishop, piece_color: color });
+            return Some(Piece {
+                piece_type: PieceType::Bishop,
+                piece_color: color,
+            });
         }
         if (self.piece_types[PieceType::Rook as usize].0 & bit) != 0 {
-            return Some(Piece { piece_type: PieceType::Rook, piece_color: color });
+            return Some(Piece {
+                piece_type: PieceType::Rook,
+                piece_color: color,
+            });
         }
         if (self.piece_types[PieceType::Queen as usize].0 & bit) != 0 {
-            return Some(Piece { piece_type: PieceType::Queen, piece_color: color });
+            return Some(Piece {
+                piece_type: PieceType::Queen,
+                piece_color: color,
+            });
         }
         if (self.piece_types[PieceType::King as usize].0 & bit) != 0 {
-            return Some(Piece { piece_type: PieceType::King, piece_color: color });
+            return Some(Piece {
+                piece_type: PieceType::King,
+                piece_color: color,
+            });
         }
         None
     }
@@ -57,14 +84,14 @@ impl Position {
         let sq = row * 8 + col;
         let mask = 1u64 << sq;
         let not_mask = !mask;
-        
+
         // Clear existing
         self.piece_colors[0].0 &= not_mask;
         self.piece_colors[1].0 &= not_mask;
         for i in 0..6 {
             self.piece_types[i].0 &= not_mask;
         }
-        
+
         if let Some(p) = piece {
             self.piece_colors[p.piece_color as usize].0 |= mask;
             self.piece_types[p.piece_type as usize].0 |= mask;
@@ -94,12 +121,24 @@ pub struct NullUndoInfo {
 const ROOK_DIRS: [(i8, i8); 4] = [(1, 0), (-1, 0), (0, 1), (0, -1)];
 const BISHOP_DIRS: [(i8, i8); 4] = [(1, 1), (1, -1), (-1, 1), (-1, -1)];
 const KING_DIRS: [(i8, i8); 8] = [
-    (1, 0), (-1, 0), (0, 1), (0, -1),
-    (1, 1), (1, -1), (-1, 1), (-1, -1),
+    (1, 0),
+    (-1, 0),
+    (0, 1),
+    (0, -1),
+    (1, 1),
+    (1, -1),
+    (-1, 1),
+    (-1, -1),
 ];
 const KNIGHT_OFFSETS: [(i8, i8); 8] = [
-    (2, 1), (1, 2), (-2, 1), (-1, 2),
-    (2, -1), (1, -2), (-2, -1), (-1, -2),
+    (2, 1),
+    (1, 2),
+    (-2, 1),
+    (-1, 2),
+    (2, -1),
+    (1, -2),
+    (-2, -1),
+    (-1, -2),
 ];
 
 pub fn empty_position(turn: PieceColor) -> Position {
@@ -234,7 +273,6 @@ fn fen_char_to_piece(ch: char) -> Option<Piece> {
     }
 }
 
-
 #[cfg_attr(test, allow(dead_code))]
 fn print_colored(c: char, pc: PieceColor) {
     let text = c.to_string();
@@ -272,265 +310,275 @@ pub fn print_position(position: Position) {
     println!("   a b c d e f g h");
 }
 
-fn add_sliding_moves(
-    v: &mut Vec<Move>,
-    position: Position,
-    piece: Piece,
-    square: u8,
-    directions: &[(i8, i8)],
-    max_len: i8,
-) {
-    let (col, row) = get_col_and_row(square);
-    for (dc, dr) in directions {
-        for i in 1..=max_len {
-            let nr = row as i8 + dr * i;
-            let nc = col as i8 + dc * i;
-            if nr < 0 || nr >= ROW_NUM as i8 || nc < 0 || nc >= COL_NUM as i8 {
-                break;
-            }
-            let target = position.get_piece(nr as usize, nc as usize);
-            match target {
-                None => {
-                    v.push(Move::build(piece, square, get_square_idx(nr as u8, nc as u8)));
-                }
-                Some(p) if p.piece_color != piece.piece_color => {
-                    v.push(Move::build(piece, square, get_square_idx(nr as u8, nc as u8)).capture());
-                    break;
-                }
-                _ => break, // own piece blocks
-            }
-        }
-    }
+pub fn square_to_lerf(sq: u8) -> usize {
+    let col = (sq - 1) / 8;
+    let row = (sq - 1) % 8;
+    (row * 8 + col) as usize
 }
 
-fn add_knight_moves(
-    v: &mut Vec<Move>,
-    position: Position,
-    piece: Piece,
-    square: u8,
-) {
-    let (col, row) = get_col_and_row(square);
-    for (dc, dr) in KNIGHT_OFFSETS {
-        let nr = row as i8 + dr;
-        let nc = col as i8 + dc;
-        if nr < 0 || nr >= ROW_NUM as i8 || nc < 0 || nc >= COL_NUM as i8 {
-            continue;
-        }
-        let target = position.get_piece(nr as usize, nc as usize);
-        match target {
-            None => {
-                v.push(Move::build(piece, square, get_square_idx(nr as u8, nc as u8)));
-            }
-            Some(p) if p.piece_color != piece.piece_color => {
-                v.push(Move::build(piece, square, get_square_idx(nr as u8, nc as u8)).capture());
-            }
-            _ => {} // own piece blocks
-        }
-    }
+pub fn lerf_to_square(lerf: usize) -> u8 {
+    let row = lerf / 8;
+    let col = lerf % 8;
+    (col * 8 + row + 1) as u8
 }
 
-fn add_pawn_moves(
-    v: &mut Vec<Move>,
-    position: Position,
-    piece: Piece,
-    square: u8,
-) {
-    let (col, row) = get_col_and_row(square);
-    let direction: i8 = if piece.piece_color == PieceColor::White { 1 } else { -1 };
-    let max_len: i8 = if (row == 1 && direction == 1) || (row == 6 && direction == -1) { 2 } else { 1 };
-
-    // One step forward
-    let nr = row as i8 + direction;
-    if nr >= 0 && nr < ROW_NUM as i8 {
-        let target = position.get_piece(nr as usize, col as usize);
-        if target.is_none() {
-            let forward_move = Move::build(piece, square, get_square_idx(nr as u8, col));
-            let dest_row_idx = if direction == 1 { nr } else { nr };
-            if !try_promotions(dest_row_idx, piece, v, forward_move) {
-                v.push(forward_move);
-            }
-        }
-    }
-
-    // Double step forward from starting rank
-    if max_len == 2 {
-        let nr2 = row as i8 + 2 * direction;
-        let nr1 = row as i8 + direction;
-        let target1 = position.get_piece(nr1 as usize, col as usize);
-        let target2 = position.get_piece(nr2 as usize, col as usize);
-        if target1.is_none() && target2.is_none() {
-            v.push(Move::build(piece, square, get_square_idx(nr2 as u8, col)));
-        }
-    }
-
-    // Captures: forward-left and forward-right
-    for dc in [-1, 1] {
-        let nc = col as i8 + dc;
-        let nr = row as i8 + direction;
-        if nr >= 0 && nr < ROW_NUM as i8 && nc >= 0 && nc < COL_NUM as i8 {
-            let target = position.get_piece(nr as usize, nc as usize);
-            match target {
-                Some(p) if p.piece_color != piece.piece_color => {
-                    let capture_move = Move::build(piece, square, get_square_idx(nr as u8, nc as u8)).capture();
-                    if !try_promotions(nr, piece, v, capture_move) {
-                        v.push(capture_move);
-                    }
-                }
-                _ => {}
-            }
-        }
-    }
-
-    // En passant
-    try_en_passant(position, piece, col, row, square, direction, v);
-}
-
-fn try_promotions(dest_row_idx: i8, piece: Piece, v: &mut Vec<Move>, possible_move: Move) -> bool {
-    if piece.piece_type == PieceType::Pawn && dest_row_idx == 0 {
-        v.push(possible_move.promote_to(BLACK_QUEEN));
-        v.push(possible_move.promote_to(BLACK_ROOK));
-        v.push(possible_move.promote_to(BLACK_BISHOP));
-        v.push(possible_move.promote_to(BLACK_KNIGHT));
-        return true;
-    }
-    else if piece.piece_type == PieceType::Pawn && dest_row_idx == 7 {
-        v.push(possible_move.promote_to(WHITE_QUEEN));
-        v.push(possible_move.promote_to(WHITE_ROOK));
-        v.push(possible_move.promote_to(WHITE_BISHOP));
-        v.push(possible_move.promote_to(WHITE_KNIGHT));
-        return true;
-    }
-    false
-}
-
-fn try_en_passant(position: Position, piece: Piece, col_idx: u8, row_idx: u8, square: u8, direction: i8, v: &mut Vec<Move>) {
-    match position.last_move {
-        None => {}
-        Some(last_move) => {
-            if last_move.piece.piece_type == PieceType::Pawn {
-                let (last_col_idx, last_row_idx) = get_col_and_row(last_move.to);
-                let (_, last_from_row_idx) = get_col_and_row(last_move.from);
-                let diff = last_row_idx as i8 - last_from_row_idx as i8;
-                if diff == 2 || diff == -2 {
-                    let mut diff_col = col_idx as i8 - last_col_idx as i8;
-                        if diff_col == -1 {
-                        diff_col = 1;
-                        }
-                    if last_row_idx == row_idx && diff_col == 1 {
-                        let possible_move = Move::build(piece, square, get_square_idx(((last_row_idx as i8) + direction) as u8, last_col_idx)).capture();
-                        v.push(possible_move);
-                    }
-                }
-            }
-        }
-    }
-}
-
-/// Check if a given square is attacked by any piece of `by_color`.
-/// Scans outward from the square using the same logic as `is_in_check`.
 pub fn is_square_attacked(position: Position, square: u8, by_color: PieceColor) -> bool {
-    let (target_col, target_row) = get_col_and_row(square);
+    let sq = square_to_lerf(square);
+    let occ = Bitboard(position.piece_colors[0].0 | position.piece_colors[1].0);
 
-    // Check knight attacks
-    for (dc, dr) in KNIGHT_OFFSETS {
-        let nr = target_row as i8 + dr;
-        let nc = target_col as i8 + dc;
-        if nr < 0 || nr >= ROW_NUM as i8 || nc < 0 || nc >= COL_NUM as i8 {
-            continue;
-        }
-        if let Some(piece) = position.get_piece(nr as usize, nc as usize)
-            && piece.piece_color == by_color && piece.piece_type == PieceType::Knight {
-                return true;
-            }
+    let opp_pieces = position.piece_colors[by_color as usize];
+    let opp_pawns = Bitboard(opp_pieces.0 & position.piece_types[PieceType::Pawn as usize].0);
+    let opp_knights = Bitboard(opp_pieces.0 & position.piece_types[PieceType::Knight as usize].0);
+    let opp_bishops = Bitboard(opp_pieces.0 & position.piece_types[PieceType::Bishop as usize].0);
+    let opp_rooks = Bitboard(opp_pieces.0 & position.piece_types[PieceType::Rook as usize].0);
+    let opp_queens = Bitboard(opp_pieces.0 & position.piece_types[PieceType::Queen as usize].0);
+    let opp_kings = Bitboard(opp_pieces.0 & position.piece_types[PieceType::King as usize].0);
+
+    if (KNIGHT_ATTACKS[sq].0 & opp_knights.0) != 0 {
+        return true;
+    }
+    if (KING_ATTACKS[sq].0 & opp_kings.0) != 0 {
+        return true;
     }
 
-    // Check king attacks (enemy king adjacent)
-    for (dc, dr) in KING_DIRS {
-        let nr = target_row as i8 + dr;
-        let nc = target_col as i8 + dc;
-        if nr < 0 || nr >= ROW_NUM as i8 || nc < 0 || nc >= COL_NUM as i8 {
-            continue;
-        }
-        if let Some(piece) = position.get_piece(nr as usize, nc as usize)
-            && piece.piece_color == by_color && piece.piece_type == PieceType::King {
-                return true;
-            }
+    let pawn_attacks = if by_color == PieceColor::White {
+        BLACK_PAWN_ATTACKS[sq]
+    } else {
+        WHITE_PAWN_ATTACKS[sq]
+    };
+    if (pawn_attacks.0 & opp_pawns.0) != 0 {
+        return true;
     }
 
-    // Check pawn attacks
-    // White pawns move upward (row+1), so they attack from one row below (row-1)
-    // Black pawns move downward (row-1), so they attack from one row above (row+1)
-    let pawn_dir: i8 = if by_color == PieceColor::White { -1 } else { 1 };
-    for dc in [-1, 1] {
-        let nr = target_row as i8 + pawn_dir;
-        let nc = target_col as i8 + dc;
-        if nr < 0 || nr >= ROW_NUM as i8 || nc < 0 || nc >= COL_NUM as i8 {
-            continue;
-        }
-        if let Some(piece) = position.get_piece(nr as usize, nc as usize)
-            && piece.piece_color == by_color && piece.piece_type == PieceType::Pawn {
-                return true;
-            }
+    if (get_bishop_attacks(sq, occ).0 & (opp_bishops.0 | opp_queens.0)) != 0 {
+        return true;
     }
-
-    // Check sliding attacks (rooks, bishops, queens)
-    // Rook directions (orthogonal)
-    for (dc, dr) in ROOK_DIRS {
-        let mut i: i8 = 1;
-        loop {
-            let nr = target_row as i8 + dr * i;
-            let nc = target_col as i8 + dc * i;
-            if nr < 0 || nr >= ROW_NUM as i8 || nc < 0 || nc >= COL_NUM as i8 {
-                break;
-            }
-            if let Some(piece) = position.get_piece(nr as usize, nc as usize) {
-                if piece.piece_color == by_color
-                    && (piece.piece_type == PieceType::Rook || piece.piece_type == PieceType::Queen)
-                {
-                    return true;
-                }
-                break; // blocked by any piece
-            }
-            i += 1;
-        }
-    }
-
-    // Bishop directions (diagonal)
-    for (dc, dr) in BISHOP_DIRS {
-        let mut i: i8 = 1;
-        loop {
-            let nr = target_row as i8 + dr * i;
-            let nc = target_col as i8 + dc * i;
-            if nr < 0 || nr >= ROW_NUM as i8 || nc < 0 || nc >= COL_NUM as i8 {
-                break;
-            }
-            if let Some(piece) = position.get_piece(nr as usize, nc as usize) {
-                if piece.piece_color == by_color
-                    && (piece.piece_type == PieceType::Bishop || piece.piece_type == PieceType::Queen)
-                {
-                    return true;
-                }
-                break;
-            }
-            i += 1;
-        }
+    if (get_rook_attacks(sq, occ).0 & (opp_rooks.0 | opp_queens.0)) != 0 {
+        return true;
     }
 
     false
 }
 
-/// Check if the king of the given color is in check.
 pub fn is_in_check(position: Position, color: PieceColor) -> bool {
-    // Find the king
-    for square_num in 1..=(ROW_NUM * COL_NUM) {
-        let (col_idx, row_idx) = get_col_and_row(square_num);
-        if let Some(piece) = position.get_piece(row_idx as usize, col_idx as usize)
-            && piece.piece_type == PieceType::King && piece.piece_color == color {
-                let enemy = if color == PieceColor::White { PieceColor::Black } else { PieceColor::White };
-                return is_square_attacked(position, square_num, enemy);
-            }
+    let kings =
+        position.piece_colors[color as usize].0 & position.piece_types[PieceType::King as usize].0;
+    if kings == 0 {
+        return false;
     }
-    false
+    let king_sq = kings.trailing_zeros() as usize;
+    let enemy = if color == PieceColor::White { PieceColor::Black } else { PieceColor::White };
+    is_square_attacked(position, lerf_to_square(king_sq), enemy)
+}
+
+pub fn pseudo_legal_moves(position: Position) -> Vec<Move> {
+    let mut v = Vec::with_capacity(60);
+    let us = position.turn;
+    let them = if us == PieceColor::White { PieceColor::Black } else { PieceColor::White };
+
+    let my_pieces = position.piece_colors[us as usize];
+    let opp_pieces = position.piece_colors[them as usize];
+    let occ = Bitboard(my_pieces.0 | opp_pieces.0);
+    let empty = Bitboard(!occ.0);
+
+    // PAWNS
+    let mut pawns = Bitboard(my_pieces.0 & position.piece_types[PieceType::Pawn as usize].0);
+    let dir: i32 = if us == PieceColor::White { 8 } else { -8 };
+    let start_row = if us == PieceColor::White { 1 } else { 6 };
+    let prom_row = if us == PieceColor::White { 7 } else { 0 };
+
+    while pawns.0 != 0 {
+        let from_lerf = pawns.pop_lsb() as usize;
+        let from_sq = lerf_to_square(from_lerf);
+        let piece = Piece {
+            piece_type: PieceType::Pawn,
+            piece_color: us,
+        };
+        let q = if us == PieceColor::White {
+            WHITE_QUEEN
+        } else {
+            BLACK_QUEEN
+        };
+        let r = if us == PieceColor::White {
+            WHITE_ROOK
+        } else {
+            BLACK_ROOK
+        };
+        let b = if us == PieceColor::White {
+            WHITE_BISHOP
+        } else {
+            BLACK_BISHOP
+        };
+        let n = if us == PieceColor::White {
+            WHITE_KNIGHT
+        } else {
+            BLACK_KNIGHT
+        };
+
+        let to_lerf = (from_lerf as i32 + dir) as usize;
+        if to_lerf < 64 && empty.test_bit(to_lerf as u8) {
+            let to_sq = lerf_to_square(to_lerf);
+            let row = to_lerf / 8;
+            if row == prom_row {
+                v.push(Move::build(piece, from_sq, to_sq).promote_to(q));
+                v.push(Move::build(piece, from_sq, to_sq).promote_to(r));
+                v.push(Move::build(piece, from_sq, to_sq).promote_to(b));
+                v.push(Move::build(piece, from_sq, to_sq).promote_to(n));
+            } else {
+                v.push(Move::build(piece, from_sq, to_sq));
+                if from_lerf / 8 == start_row {
+                    let to2_lerf = (from_lerf as i32 + 2 * dir) as usize;
+                    if empty.test_bit(to2_lerf as u8) {
+                        v.push(Move::build(piece, from_sq, lerf_to_square(to2_lerf)));
+                    }
+                }
+            }
+        }
+
+        let attacks = if us == PieceColor::White {
+            WHITE_PAWN_ATTACKS[from_lerf]
+        } else {
+            BLACK_PAWN_ATTACKS[from_lerf]
+        };
+        let mut caps = Bitboard(attacks.0 & opp_pieces.0);
+        while caps.0 != 0 {
+            let to_lerf = caps.pop_lsb() as usize;
+            let to_sq = lerf_to_square(to_lerf);
+            let row = to_lerf / 8;
+            if row == prom_row {
+                v.push(Move::build(piece, from_sq, to_sq).capture().promote_to(q));
+                v.push(Move::build(piece, from_sq, to_sq).capture().promote_to(r));
+                v.push(Move::build(piece, from_sq, to_sq).capture().promote_to(b));
+                v.push(Move::build(piece, from_sq, to_sq).capture().promote_to(n));
+            } else {
+                v.push(Move::build(piece, from_sq, to_sq).capture());
+            }
+        }
+
+        if let Some(last_move) = position.last_move {
+            if last_move.piece.piece_type == PieceType::Pawn {
+                let last_from_lerf = square_to_lerf(last_move.from);
+                let last_to_lerf = square_to_lerf(last_move.to);
+                let diff = last_to_lerf as i32 - last_from_lerf as i32;
+                if diff == 16 || diff == -16 {
+                    if (from_lerf as i32 - last_to_lerf as i32).abs() == 1
+                        && (from_lerf / 8) == (last_to_lerf / 8)
+                    {
+                        let to_lerf = (last_to_lerf as i32 + dir) as usize;
+                        v.push(Move::build(piece, from_sq, lerf_to_square(to_lerf)).capture());
+                    }
+                }
+            }
+        }
+    }
+
+    // KNIGHTS
+    let mut knights = Bitboard(my_pieces.0 & position.piece_types[PieceType::Knight as usize].0);
+    while knights.0 != 0 {
+        let from_lerf = knights.pop_lsb() as usize;
+        let from_sq = lerf_to_square(from_lerf);
+        let piece = Piece {
+            piece_type: PieceType::Knight,
+            piece_color: us,
+        };
+        let mut attacks = Bitboard(KNIGHT_ATTACKS[from_lerf].0 & !my_pieces.0);
+        while attacks.0 != 0 {
+            let to_lerf = attacks.pop_lsb() as usize;
+            let to_sq = lerf_to_square(to_lerf);
+            let mut m = Move::build(piece, from_sq, to_sq);
+            if (opp_pieces.0 & (1u64 << to_lerf)) != 0 {
+                m = m.capture();
+            }
+            v.push(m);
+        }
+    }
+
+    // BISHOPS
+    let mut bishops = Bitboard(my_pieces.0 & position.piece_types[PieceType::Bishop as usize].0);
+    while bishops.0 != 0 {
+        let from_lerf = bishops.pop_lsb() as usize;
+        let from_sq = lerf_to_square(from_lerf);
+        let piece = Piece {
+            piece_type: PieceType::Bishop,
+            piece_color: us,
+        };
+        let mut attacks = Bitboard(get_bishop_attacks(from_lerf, occ).0 & !my_pieces.0);
+        while attacks.0 != 0 {
+            let to_lerf = attacks.pop_lsb() as usize;
+            let to_sq = lerf_to_square(to_lerf);
+            let mut m = Move::build(piece, from_sq, to_sq);
+            if (opp_pieces.0 & (1u64 << to_lerf)) != 0 {
+                m = m.capture();
+            }
+            v.push(m);
+        }
+    }
+
+    // ROOKS
+    let mut rooks = Bitboard(my_pieces.0 & position.piece_types[PieceType::Rook as usize].0);
+    while rooks.0 != 0 {
+        let from_lerf = rooks.pop_lsb() as usize;
+        let from_sq = lerf_to_square(from_lerf);
+        let piece = Piece {
+            piece_type: PieceType::Rook,
+            piece_color: us,
+        };
+        let mut attacks = Bitboard(get_rook_attacks(from_lerf, occ).0 & !my_pieces.0);
+        while attacks.0 != 0 {
+            let to_lerf = attacks.pop_lsb() as usize;
+            let to_sq = lerf_to_square(to_lerf);
+            let mut m = Move::build(piece, from_sq, to_sq);
+            if (opp_pieces.0 & (1u64 << to_lerf)) != 0 {
+                m = m.capture();
+            }
+            v.push(m);
+        }
+    }
+
+    // QUEENS
+    let mut queens = Bitboard(my_pieces.0 & position.piece_types[PieceType::Queen as usize].0);
+    while queens.0 != 0 {
+        let from_lerf = queens.pop_lsb() as usize;
+        let from_sq = lerf_to_square(from_lerf);
+        let piece = Piece {
+            piece_type: PieceType::Queen,
+            piece_color: us,
+        };
+        let mut attacks = Bitboard(get_queen_attacks(from_lerf, occ).0 & !my_pieces.0);
+        while attacks.0 != 0 {
+            let to_lerf = attacks.pop_lsb() as usize;
+            let to_sq = lerf_to_square(to_lerf);
+            let mut m = Move::build(piece, from_sq, to_sq);
+            if (opp_pieces.0 & (1u64 << to_lerf)) != 0 {
+                m = m.capture();
+            }
+            v.push(m);
+        }
+    }
+
+    // KINGS
+    let mut kings = Bitboard(my_pieces.0 & position.piece_types[PieceType::King as usize].0);
+    while kings.0 != 0 {
+        let from_lerf = kings.pop_lsb() as usize;
+        let from_sq = lerf_to_square(from_lerf);
+        let piece = Piece {
+            piece_type: PieceType::King,
+            piece_color: us,
+        };
+        let mut attacks = Bitboard(KING_ATTACKS[from_lerf].0 & !my_pieces.0);
+        while attacks.0 != 0 {
+            let to_lerf = attacks.pop_lsb() as usize;
+            let to_sq = lerf_to_square(to_lerf);
+            let mut m = Move::build(piece, from_sq, to_sq);
+            if (opp_pieces.0 & (1u64 << to_lerf)) != 0 {
+                m = m.capture();
+            }
+            v.push(m);
+        }
+    }
+
+    add_castling_moves(&mut v, position, us);
+    v
 }
 
 fn add_castling_moves(v: &mut Vec<Move>, position: Position, color: PieceColor) {
@@ -538,17 +586,31 @@ fn add_castling_moves(v: &mut Vec<Move>, position: Position, color: PieceColor) 
         PieceColor::White => (position.white_short_castle, position.white_long_castle),
         PieceColor::Black => (position.black_short_castle, position.black_long_castle),
     };
-    let king_square: u8 = if color == PieceColor::White { E1 as u8 } else { E8 as u8 };
+    use crate::square::Squares::{C1, C8, D1, D8, E1, E8, F1, F8, G1, G8};
+    let king_square: u8 = if color == PieceColor::White {
+        E1 as u8
+    } else {
+        E8 as u8
+    };
     let rank: usize = if color == PieceColor::White { 0 } else { 7 };
-    let enemy = if color == PieceColor::White { PieceColor::Black } else { PieceColor::White };
+    let enemy = if color == PieceColor::White {
+        PieceColor::Black
+    } else {
+        PieceColor::White
+    };
 
-    // Short castling (kingside)
     if rights_short {
-        // Squares between king and rook must be empty: F1, G1 (or F8, G8)
         if position.get_piece(rank, 5).is_none() && position.get_piece(rank, 6).is_none() {
-            // King must not be in check, pass through check, or end in check
-            let f_sq: u8 = if color == PieceColor::White { F1 as u8 } else { F8 as u8 };
-            let g_sq: u8 = if color == PieceColor::White { G1 as u8 } else { G8 as u8 };
+            let f_sq: u8 = if color == PieceColor::White {
+                F1 as u8
+            } else {
+                F8 as u8
+            };
+            let g_sq: u8 = if color == PieceColor::White {
+                G1 as u8
+            } else {
+                G8 as u8
+            };
             if !is_square_attacked(position, king_square, enemy)
                 && !is_square_attacked(position, f_sq, enemy)
                 && !is_square_attacked(position, g_sq, enemy)
@@ -558,16 +620,21 @@ fn add_castling_moves(v: &mut Vec<Move>, position: Position, color: PieceColor) 
         }
     }
 
-    // Long castling (queenside)
     if rights_long {
-        // Squares between king and rook must be empty: B1, C1, D1 (or B8, C8, D8)
         if position.get_piece(rank, 1).is_none()
             && position.get_piece(rank, 2).is_none()
             && position.get_piece(rank, 3).is_none()
         {
-            // King must not be in check, pass through check, or end in check
-            let d_sq: u8 = if color == PieceColor::White { D1 as u8 } else { D8 as u8 };
-            let c_sq: u8 = if color == PieceColor::White { C1 as u8 } else { C8 as u8 };
+            let d_sq: u8 = if color == PieceColor::White {
+                D1 as u8
+            } else {
+                D8 as u8
+            };
+            let c_sq: u8 = if color == PieceColor::White {
+                C1 as u8
+            } else {
+                C8 as u8
+            };
             if !is_square_attacked(position, king_square, enemy)
                 && !is_square_attacked(position, d_sq, enemy)
                 && !is_square_attacked(position, c_sq, enemy)
@@ -578,36 +645,6 @@ fn add_castling_moves(v: &mut Vec<Move>, position: Position, color: PieceColor) 
     }
 }
 
-/// Generate pseudo-legal moves (moves that don't account for leaving own king in check).
-pub fn pseudo_legal_moves(position: Position) -> Vec<Move> {
-    let mut v = Vec::new();
-    for square_num in 1..=(ROW_NUM * COL_NUM) {
-        let (col_idx, row_idx) = get_col_and_row(square_num);
-        let maybe_piece = position.get_piece(row_idx as usize, col_idx as usize);
-        let Some(piece) = maybe_piece else { continue; };
-        if position.turn != piece.piece_color {
-            continue;
-        }
-        match piece.piece_type {
-            PieceType::Pawn => add_pawn_moves(&mut v, position, piece, square_num),
-            PieceType::Knight => add_knight_moves(&mut v, position, piece, square_num),
-            PieceType::Bishop => add_sliding_moves(&mut v, position, piece, square_num, &BISHOP_DIRS, 8),
-            PieceType::Rook => add_sliding_moves(&mut v, position, piece, square_num, &ROOK_DIRS, 8),
-            PieceType::Queen => {
-                add_sliding_moves(&mut v, position, piece, square_num, &ROOK_DIRS, 8);
-                add_sliding_moves(&mut v, position, piece, square_num, &BISHOP_DIRS, 8);
-            }
-            PieceType::King => {
-                add_sliding_moves(&mut v, position, piece, square_num, &KING_DIRS, 1);
-            }
-        }
-    }
-    // Add castling moves for the side to move
-    add_castling_moves(&mut v, position, position.turn);
-    v
-}
-
-/// Generate legal moves (pseudo-legal moves filtered by "doesn't leave king in check").
 pub fn legal_moves(position: Position) -> Vec<Move> {
     let candidates = pseudo_legal_moves(position);
     candidates
@@ -620,7 +657,6 @@ pub fn legal_moves(position: Position) -> Vec<Move> {
         .collect()
 }
 
-/// Generate only legal capture moves. Faster for Quiescence Search because it skips legality checks for quiet moves.
 pub fn capture_moves(position: Position) -> Vec<Move> {
     pseudo_legal_moves(position)
         .into_iter()
@@ -633,9 +669,6 @@ pub fn capture_moves(position: Position) -> Vec<Move> {
         .collect()
 }
 
-// TODO:
-// 1. Check if move is legal.
-// 2. Allow special moves- castling, promotion, en passant.
 pub fn make_move(position: &mut Position, m: Move) -> UndoInfo {
     // Save state for undo
     let undo = UndoInfo {
@@ -652,8 +685,16 @@ pub fn make_move(position: &mut Position, m: Move) -> UndoInfo {
     if m.from == SHORT_CASTLING_SQUARE || m.from == LONG_CASTLING_SQUARE {
         let is_long = m.from == LONG_CASTLING_SQUARE;
         let (king_rank, rook_from_col, rook_to_col) = if m.piece.piece_color == PieceColor::White {
-            if is_long { (0usize, 0usize, 3usize) } else { (0usize, 7usize, 5usize) }
-        } else if is_long { (7usize, 0usize, 3usize) } else { (7usize, 7usize, 5usize) };
+            if is_long {
+                (0usize, 0usize, 3usize)
+            } else {
+                (0usize, 7usize, 5usize)
+            }
+        } else if is_long {
+            (7usize, 0usize, 3usize)
+        } else {
+            (7usize, 7usize, 5usize)
+        };
 
         // Move king (always to column 6 for short, column 2 for long)
         let king_to_col = if is_long { 2usize } else { 6usize };
@@ -661,10 +702,14 @@ pub fn make_move(position: &mut Position, m: Move) -> UndoInfo {
         position.set_piece(king_rank, king_to_col, Some(m.piece));
         // Move rook
         position.set_piece(king_rank, rook_from_col, None);
-        position.set_piece(king_rank, rook_to_col, match m.piece.piece_color {
-            PieceColor::White => Some(WHITE_ROOK),
-            PieceColor::Black => Some(BLACK_ROOK),
-        });
+        position.set_piece(
+            king_rank,
+            rook_to_col,
+            match m.piece.piece_color {
+                PieceColor::White => Some(WHITE_ROOK),
+                PieceColor::Black => Some(BLACK_ROOK),
+            },
+        );
 
         // Lost castle rights for this side
         if m.piece.piece_color == PieceColor::White {
@@ -687,12 +732,17 @@ pub fn make_move(position: &mut Position, m: Move) -> UndoInfo {
 
     let (from_col_idx, from_row_idx) = get_col_and_row(m.from);
     let (to_col_idx, to_row_idx) = get_col_and_row(m.to);
-    let maybe_piece_on_src: Option<Piece> = position.get_piece(from_row_idx as usize, from_col_idx as usize);
+    let maybe_piece_on_src: Option<Piece> =
+        position.get_piece(from_row_idx as usize, from_col_idx as usize);
     match maybe_piece_on_src {
         Some(src_piece) => {
-            let maybe_piece_on_dest: Option<Piece> = position.get_piece(to_row_idx as usize, to_col_idx as usize);
+            let maybe_piece_on_dest: Option<Piece> =
+                position.get_piece(to_row_idx as usize, to_col_idx as usize);
             if let Some(dst_piece) = maybe_piece_on_dest {
-                assert!((dst_piece.piece_color != src_piece.piece_color), "Square is already occupied!");
+                assert!(
+                    (dst_piece.piece_color != src_piece.piece_color),
+                    "Square is already occupied!"
+                );
                 // Save captured piece
                 let mut captured_undo = undo;
                 captured_undo.captured = Some(dst_piece);
@@ -712,10 +762,18 @@ pub fn make_move(position: &mut Position, m: Move) -> UndoInfo {
                 // Handle promotion
                 match m.new_piece {
                     Some(promoted) => {
-                        position.set_piece(to_row_idx as usize, to_col_idx as usize, Some(promoted));
+                        position.set_piece(
+                            to_row_idx as usize,
+                            to_col_idx as usize,
+                            Some(promoted),
+                        );
                     }
                     None => {
-                        position.set_piece(to_row_idx as usize, to_col_idx as usize, Some(src_piece));
+                        position.set_piece(
+                            to_row_idx as usize,
+                            to_col_idx as usize,
+                            Some(src_piece),
+                        );
                     }
                 }
                 // Update castle rights when king or rook moves
@@ -741,8 +799,7 @@ pub fn make_move(position: &mut Position, m: Move) -> UndoInfo {
                 }
                 if position.turn == PieceColor::White {
                     position.turn = PieceColor::Black;
-                }
-                else {
+                } else {
                     position.turn = PieceColor::White;
                 }
                 position.last_move = Some(m);
@@ -757,10 +814,18 @@ pub fn make_move(position: &mut Position, m: Move) -> UndoInfo {
                 // Handle promotion
                 match m.new_piece {
                     Some(promoted) => {
-                        position.set_piece(to_row_idx as usize, to_col_idx as usize, Some(promoted));
+                        position.set_piece(
+                            to_row_idx as usize,
+                            to_col_idx as usize,
+                            Some(promoted),
+                        );
                     }
                     None => {
-                        position.set_piece(to_row_idx as usize, to_col_idx as usize, Some(src_piece));
+                        position.set_piece(
+                            to_row_idx as usize,
+                            to_col_idx as usize,
+                            Some(src_piece),
+                        );
                     }
                 }
                 // We don't need a separate "captured_undo" for en passant because
@@ -790,13 +855,12 @@ pub fn make_move(position: &mut Position, m: Move) -> UndoInfo {
                 }
                 if position.turn == PieceColor::White {
                     position.turn = PieceColor::Black;
-                }
-                else {
+                } else {
                     position.turn = PieceColor::White;
                 }
                 position.last_move = Some(m);
                 crate::zobrist::update_hash_make_move(position, m, &undo);
-                undo// undo.captured is None — signals en passant
+                undo // undo.captured is None — signals en passant
             }
         }
         None => {
@@ -826,7 +890,11 @@ pub fn unmake_move(position: &mut Position, m: Move, undo: UndoInfo) {
     // Handle castling
     if m.from == SHORT_CASTLING_SQUARE || m.from == LONG_CASTLING_SQUARE {
         let is_long = m.from == LONG_CASTLING_SQUARE;
-        let king_rank = if m.piece.piece_color == PieceColor::White { 0usize } else { 7usize };
+        let king_rank = if m.piece.piece_color == PieceColor::White {
+            0usize
+        } else {
+            7usize
+        };
         let king_to_col = if is_long { 2usize } else { 6usize };
         let rook_from_col = if is_long { 3usize } else { 5usize };
         let rook_to_col = if is_long { 0usize } else { 7usize };
@@ -836,10 +904,14 @@ pub fn unmake_move(position: &mut Position, m: Move, undo: UndoInfo) {
         position.set_piece(king_rank, 4, Some(m.piece));
         // Restore rook
         position.set_piece(king_rank, rook_from_col, None);
-        position.set_piece(king_rank, rook_to_col, match m.piece.piece_color {
-            PieceColor::White => Some(WHITE_ROOK),
-            PieceColor::Black => Some(BLACK_ROOK),
-        });
+        position.set_piece(
+            king_rank,
+            rook_to_col,
+            match m.piece.piece_color {
+                PieceColor::White => Some(WHITE_ROOK),
+                PieceColor::Black => Some(BLACK_ROOK),
+            },
+        );
         return;
     }
 
@@ -932,7 +1004,10 @@ impl Position {
         for row in 0..8 {
             for col in 0..8 {
                 if let Some(p) = self.get_piece(row, col) {
-                    if p.piece_color == color && p.piece_type != PieceType::Pawn && p.piece_type != PieceType::King {
+                    if p.piece_color == color
+                        && p.piece_type != PieceType::Pawn
+                        && p.piece_type != PieceType::King
+                    {
                         return true;
                     }
                 }

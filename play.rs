@@ -1,7 +1,7 @@
-use std::io::{self, BufRead, Write};
-use crate::position::{self, start_position, legal_moves, is_in_check, make_move};
-use crate::r#move::{print_move, parse_move_algebraic};
+use crate::r#move::{parse_move_algebraic, print_move};
 use crate::piece::PieceColor;
+use crate::position::{self, is_in_check, legal_moves, make_move, start_position};
+use std::io::{self, BufRead, Write};
 
 /// Run an interactive game where the user types moves in algebraic notation
 /// and the engine responds with the best move found by 1-ply search.
@@ -38,7 +38,11 @@ pub fn interactive_loop() {
             println!(
                 "Game over after {move_count} moves. {}{}",
                 side,
-                if in_check { " is checkmated!" } else { " is stalemated." }
+                if in_check {
+                    " is checkmated!"
+                } else {
+                    " is stalemated."
+                }
             );
             break;
         }
@@ -94,7 +98,11 @@ pub fn interactive_loop() {
                             println!(
                                 "Game over after {move_count} moves. {}{}",
                                 side,
-                                if in_check { " is checkmated!" } else { " is stalemated." }
+                                if in_check {
+                                    " is checkmated!"
+                                } else {
+                                    " is stalemated."
+                                }
                             );
                             break;
                         }
@@ -102,12 +110,19 @@ pub fn interactive_loop() {
                         // Engine's turn — iterative deepening with time management
                         let mut config: crate::search::SearchConfig = Default::default();
                         config.time_per_move_ms = move_time_ms;
-                        let result = crate::search::search_with_time(position, config, crate::search::no_stop());
+                        let result = crate::search::search_with_time(
+                            position,
+                            config,
+                            crate::search::no_stop(),
+                        );
                         if let Some(engine_move) = result.best_move {
                             let engine_str = print_move(engine_move);
                             make_move(&mut position, engine_move);
                             move_count += 1;
-                            println!("Engine move: {engine_str} (depth {}, score {}, {} nodes)", result.depth_reached, result.score, result.nodes);
+                            println!(
+                                "Engine move: {engine_str} (depth {}, score {}, {} nodes)",
+                                result.depth_reached, result.score, result.nodes
+                            );
                             println!();
                         } else {
                             println!("Engine has no legal moves!");

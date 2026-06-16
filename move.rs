@@ -1,6 +1,9 @@
-use crate::piece::{Piece, PieceColor, WHITE_KING, BLACK_KING, PieceType, get_char, WHITE_QUEEN, BLACK_QUEEN, WHITE_ROOK, BLACK_ROOK, WHITE_BISHOP, BLACK_BISHOP, WHITE_KNIGHT, BLACK_KNIGHT};
-use crate::square::{self, get_square_name};
+use crate::piece::{
+    BLACK_BISHOP, BLACK_KING, BLACK_KNIGHT, BLACK_QUEEN, BLACK_ROOK, Piece, PieceColor, PieceType,
+    WHITE_BISHOP, WHITE_KING, WHITE_KNIGHT, WHITE_QUEEN, WHITE_ROOK, get_char,
+};
 use crate::position::Position;
+use crate::square::{self, get_square_name};
 
 pub const SHORT_CASTLING_SQUARE: u8 = 65;
 pub const LONG_CASTLING_SQUARE: u8 = 66;
@@ -17,7 +20,9 @@ pub struct Move {
 impl Move {
     pub fn build(piece: Piece, from: u8, to: u8) -> Self {
         Self {
-            piece, from, to,
+            piece,
+            from,
+            to,
             capture: false,
             new_piece: None,
         }
@@ -27,8 +32,7 @@ impl Move {
         let piece;
         if color == PieceColor::White {
             piece = WHITE_KING;
-        }
-        else {
+        } else {
             piece = BLACK_KING;
         }
         Self {
@@ -36,7 +40,7 @@ impl Move {
             from: SHORT_CASTLING_SQUARE,
             to: SHORT_CASTLING_SQUARE,
             capture: false,
-            new_piece: None
+            new_piece: None,
         }
     }
 
@@ -44,8 +48,7 @@ impl Move {
         let piece;
         if color == PieceColor::White {
             piece = WHITE_KING;
-        }
-        else {
+        } else {
             piece = BLACK_KING;
         }
         Self {
@@ -53,7 +56,7 @@ impl Move {
             from: LONG_CASTLING_SQUARE,
             to: LONG_CASTLING_SQUARE,
             capture: false,
-            new_piece: None
+            new_piece: None,
         }
     }
 
@@ -63,14 +66,16 @@ impl Move {
     }
 
     pub fn promote_to(mut self, piece: Piece) -> Self {
-        assert!((self.piece.piece_type == PieceType::Pawn), "Only pawns can promote!");
+        assert!(
+            (self.piece.piece_type == PieceType::Pawn),
+            "Only pawns can promote!"
+        );
         self.new_piece = Some(piece);
         self
     }
 }
 
-pub fn print_move(m: Move) -> String
-{
+pub fn print_move(m: Move) -> String {
     let mut s = String::new();
     if m.from == SHORT_CASTLING_SQUARE {
         s.push_str("0-0");
@@ -87,10 +92,11 @@ pub fn print_move(m: Move) -> String
     }
     s.push_str(&get_square_name(m.to));
     if m.piece.piece_type == PieceType::Pawn
-        && let Some(new_piece) = m.new_piece {
-            s.push('=');
-            s.extend(get_char(new_piece));
-        }
+        && let Some(new_piece) = m.new_piece
+    {
+        s.push('=');
+        s.extend(get_char(new_piece));
+    }
     s
 }
 
@@ -115,22 +121,18 @@ fn parse_square(s: &str) -> Option<u8> {
 
 /// Parse a move in UCI coordinate notation: "e2e4", "g1f3", "e7e8q".
 pub fn parse_move_uci(s: &str, position: &Position) -> Option<Move> {
-    if (s == "e1g1" || s == "e1h1")
-        && position.turn == PieceColor::White {
-            return Some(Move::build_short_castling(PieceColor::White));
-        }
-    if (s == "e8g8" || s == "e8h8")
-        && position.turn == PieceColor::Black {
-            return Some(Move::build_short_castling(PieceColor::Black));
-        }
-    if (s == "e1c1" || s == "e1a1")
-        && position.turn == PieceColor::White {
-            return Some(Move::build_long_castling(PieceColor::White));
-        }
-    if (s == "e8c8" || s == "e8a8")
-        && position.turn == PieceColor::Black {
-            return Some(Move::build_long_castling(PieceColor::Black));
-        }
+    if (s == "e1g1" || s == "e1h1") && position.turn == PieceColor::White {
+        return Some(Move::build_short_castling(PieceColor::White));
+    }
+    if (s == "e8g8" || s == "e8h8") && position.turn == PieceColor::Black {
+        return Some(Move::build_short_castling(PieceColor::Black));
+    }
+    if (s == "e1c1" || s == "e1a1") && position.turn == PieceColor::White {
+        return Some(Move::build_long_castling(PieceColor::White));
+    }
+    if (s == "e8c8" || s == "e8a8") && position.turn == PieceColor::Black {
+        return Some(Move::build_long_castling(PieceColor::Black));
+    }
 
     let (from_str, rest) = s.split_at(2);
     if rest.len() < 2 {
@@ -164,16 +166,32 @@ pub fn parse_move_uci(s: &str, position: &Position) -> Option<Move> {
     if let Some(pc) = promo_char {
         let promoted = match pc {
             b'q' | b'Q' => {
-                if piece.piece_color == PieceColor::White { WHITE_QUEEN } else { BLACK_QUEEN }
+                if piece.piece_color == PieceColor::White {
+                    WHITE_QUEEN
+                } else {
+                    BLACK_QUEEN
+                }
             }
             b'r' | b'R' => {
-                if piece.piece_color == PieceColor::White { WHITE_ROOK } else { BLACK_ROOK }
+                if piece.piece_color == PieceColor::White {
+                    WHITE_ROOK
+                } else {
+                    BLACK_ROOK
+                }
             }
             b'b' | b'B' => {
-                if piece.piece_color == PieceColor::White { WHITE_BISHOP } else { BLACK_BISHOP }
+                if piece.piece_color == PieceColor::White {
+                    WHITE_BISHOP
+                } else {
+                    BLACK_BISHOP
+                }
             }
             b'n' | b'N' => {
-                if piece.piece_color == PieceColor::White { WHITE_KNIGHT } else { BLACK_KNIGHT }
+                if piece.piece_color == PieceColor::White {
+                    WHITE_KNIGHT
+                } else {
+                    BLACK_KNIGHT
+                }
             }
             _ => return None,
         };
@@ -225,10 +243,34 @@ pub fn parse_move_algebraic(s: &str, position: &Position) -> Option<Move> {
     let promo = if len >= pos + 4 && bytes[len - 2] == b'=' {
         let promo_char = bytes[len - 1];
         Some(match promo_char {
-            b'Q' | b'q' => if position.turn == PieceColor::White { WHITE_QUEEN } else { BLACK_QUEEN },
-            b'R' | b'r' => if position.turn == PieceColor::White { WHITE_ROOK } else { BLACK_ROOK },
-            b'B' | b'b' => if position.turn == PieceColor::White { WHITE_BISHOP } else { BLACK_BISHOP },
-            b'N' | b'n' => if position.turn == PieceColor::White { WHITE_KNIGHT } else { BLACK_KNIGHT },
+            b'Q' | b'q' => {
+                if position.turn == PieceColor::White {
+                    WHITE_QUEEN
+                } else {
+                    BLACK_QUEEN
+                }
+            }
+            b'R' | b'r' => {
+                if position.turn == PieceColor::White {
+                    WHITE_ROOK
+                } else {
+                    BLACK_ROOK
+                }
+            }
+            b'B' | b'b' => {
+                if position.turn == PieceColor::White {
+                    WHITE_BISHOP
+                } else {
+                    BLACK_BISHOP
+                }
+            }
+            b'N' | b'n' => {
+                if position.turn == PieceColor::White {
+                    WHITE_KNIGHT
+                } else {
+                    BLACK_KNIGHT
+                }
+            }
             _ => return None,
         })
     } else {
@@ -244,18 +286,23 @@ pub fn parse_move_algebraic(s: &str, position: &Position) -> Option<Move> {
 
 /// Parse the body of an algebraic move (after the piece letter and promotion).
 /// body examples: "e4", "f3", "exd5", "fc1", "f1c1", "1c1"
-fn parse_move_algebraic_body(body: &str, piece_type: PieceType, promo: Option<Piece>, position: &Position) -> Option<Move> {
+fn parse_move_algebraic_body(
+    body: &str,
+    piece_type: PieceType,
+    promo: Option<Piece>,
+    position: &Position,
+) -> Option<Move> {
     let len = body.len();
     if len < 2 {
         return None;
     }
-    let to_str = &body[len-2..];
+    let to_str = &body[len - 2..];
     let to = parse_square(to_str)?;
 
     let moves = crate::position::legal_moves(*position);
 
     // Build disambiguation info from whatever characters come before the destination
-    let prefix = &body[..len-2]; // e.g. "", "e", "1", "e1", "x", "ex"
+    let prefix = &body[..len - 2]; // e.g. "", "e", "1", "e1", "x", "ex"
 
     // Separate an optional 'x' (capture indicator) from the disambiguation characters
     let mut disambig = prefix;
@@ -264,8 +311,14 @@ fn parse_move_algebraic_body(body: &str, piece_type: PieceType, promo: Option<Pi
     }
 
     // Parse disambiguation components
-    let ambig_file: Option<u8> = disambig.chars().find(char::is_ascii_lowercase).map(|c| (c as u8) - b'a');
-    let ambig_rank: Option<u8> = disambig.chars().find(char::is_ascii_digit).map(|c| (c as u8) - b'1');
+    let ambig_file: Option<u8> = disambig
+        .chars()
+        .find(char::is_ascii_lowercase)
+        .map(|c| (c as u8) - b'a');
+    let ambig_rank: Option<u8> = disambig
+        .chars()
+        .find(char::is_ascii_digit)
+        .map(|c| (c as u8) - b'1');
 
     moves.into_iter().find(|m| {
         if m.from == SHORT_CASTLING_SQUARE || m.from == LONG_CASTLING_SQUARE {
@@ -288,13 +341,15 @@ fn parse_move_algebraic_body(body: &str, piece_type: PieceType, promo: Option<Pi
         // Check disambiguation for all pieces (including pawns, even without 'x')
         let (from_col, from_row) = square::get_col_and_row(m.from);
         if let Some(f) = ambig_file
-            && from_col != f {
-                return false;
-            }
+            && from_col != f
+        {
+            return false;
+        }
         if let Some(r) = ambig_rank
-            && from_row != r {
-                return false;
-            }
+            && from_row != r
+        {
+            return false;
+        }
         true
     })
 }

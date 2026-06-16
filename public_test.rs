@@ -1,6 +1,6 @@
 #[cfg(test)]
 pub mod square_tests {
-    use crate::{square::get_square_name};
+    use crate::square::get_square_name;
 
     #[test]
     #[should_panic(expected = "Invalid square!")]
@@ -13,7 +13,6 @@ pub mod square_tests {
     fn too_big_square_test() {
         get_square_name(65);
     }
-
 
     #[test]
     fn a1_square_test() {
@@ -113,9 +112,9 @@ pub mod piece_test {
 pub mod move_tests {
     use crate::r#move::*;
     use crate::piece::*;
+    use crate::position::*;
     use crate::square::Squares::*;
     use crate::square::get_col_and_row;
-    use crate::position::*;
 
     #[test]
     fn rook_move_simple_square() {
@@ -123,10 +122,10 @@ pub mod move_tests {
         let s = print_move(m);
         assert_eq!(s, "Ra1");
     }
-    
+
     #[test]
     fn knight_move() {
-        let m = Move::build( WHITE_KNIGHT, G1 as u8,  F3 as u8);
+        let m = Move::build(WHITE_KNIGHT, G1 as u8, F3 as u8);
         let s = print_move(m);
         assert_eq!(s, "Nf3");
     }
@@ -173,7 +172,6 @@ pub mod move_tests {
         assert_eq!(s, "Bc4");
     }
 
-
     #[test]
     fn promotion() {
         let m = Move::build(WHITE_PAWN, F7 as u8, F8 as u8).promote_to(WHITE_QUEEN);
@@ -183,7 +181,9 @@ pub mod move_tests {
 
     #[test]
     fn promotion_with_capture() {
-        let m = Move::build(WHITE_PAWN, F7 as u8, E8 as u8).capture().promote_to(WHITE_QUEEN);
+        let m = Move::build(WHITE_PAWN, F7 as u8, E8 as u8)
+            .capture()
+            .promote_to(WHITE_QUEEN);
         let s = print_move(m);
         assert_eq!(s, "fe8=Q");
     }
@@ -193,14 +193,14 @@ pub mod move_tests {
         let m = Move::build_short_castling(PieceColor::White);
         let s = print_move(m);
         assert_eq!(s, "0-0");
-    }    
+    }
 
     #[test]
     fn long_castling() {
         let m = Move::build_long_castling(PieceColor::Black);
         let s = print_move(m);
         assert_eq!(s, "0-0-0");
-    }    
+    }
 
     #[test]
     fn parse_uci_basic_move() {
@@ -394,9 +394,9 @@ pub mod move_tests {
 }
 
 pub mod position_tests {
+    use crate::r#move::*;
     use crate::piece::*;
     use crate::position::*;
-    use crate::r#move::*;
     use crate::square::Squares::*;
     use crate::square::get_col_and_row;
     use pretty_assertions::assert_eq;
@@ -406,7 +406,6 @@ pub mod position_tests {
         let mut position = start_position();
         let e4 = Move::build(WHITE_PAWN, E2 as u8, E4 as u8);
         make_move(&mut position, e4);
-    
 
         let mut expected = start_position();
         let (from_col, from_row) = get_col_and_row(e4.from);
@@ -467,7 +466,10 @@ pub mod position_tests {
         make_move(&mut pos, promotion);
 
         assert!(pos.get_piece(f7_row as usize, f7_col as usize).is_none());
-        assert_eq!(pos.get_piece(f8_row as usize, f8_col as usize), Some(WHITE_QUEEN));
+        assert_eq!(
+            pos.get_piece(f8_row as usize, f8_col as usize),
+            Some(WHITE_QUEEN)
+        );
         assert_eq!(pos.turn, PieceColor::Black);
     }
 
@@ -483,7 +485,10 @@ pub mod position_tests {
         make_move(&mut pos, exd6);
 
         assert!(pos.get_piece(e5_row as usize, e5_col as usize).is_none());
-        assert_eq!(pos.get_piece(d6_row as usize, d6_col as usize), Some(WHITE_PAWN));
+        assert_eq!(
+            pos.get_piece(d6_row as usize, d6_col as usize),
+            Some(WHITE_PAWN)
+        );
         assert!(pos.get_piece(d5_row as usize, d5_col as usize).is_none());
         assert_eq!(pos.turn, PieceColor::Black);
     }
@@ -538,7 +543,7 @@ pub mod position_tests {
         assert!(!is_in_check(pos, PieceColor::White));
     }
 
-        #[test]
+    #[test]
     fn start_position_has_castling_rights() {
         let pos = start_position();
         assert!(pos.white_short_castle);
@@ -623,33 +628,36 @@ pub mod position_tests {
         pos.white_short_castle = true;
 
         // Capture the black rook on h8
-        make_move(&mut pos, Move::build(WHITE_ROOK, H1 as u8, H8 as u8).capture());
+        make_move(
+            &mut pos,
+            Move::build(WHITE_ROOK, H1 as u8, H8 as u8).capture(),
+        );
         assert!(!pos.white_short_castle);
         assert!(!pos.black_short_castle);
     }
 
     fn start_position_expected_legal_moves() -> Vec<Move> {
         vec![
-        Move::build(WHITE_PAWN, A2 as u8, A3 as u8),
-        Move::build(WHITE_PAWN, A2 as u8, A4 as u8),
-        Move::build(WHITE_PAWN, B2 as u8, B3 as u8),
-        Move::build(WHITE_PAWN, B2 as u8, B4 as u8),
-        Move::build(WHITE_PAWN, C2 as u8, C3 as u8),
-        Move::build(WHITE_PAWN, C2 as u8, C4 as u8),
-        Move::build(WHITE_PAWN, D2 as u8, D3 as u8),
-        Move::build(WHITE_PAWN, D2 as u8, D4 as u8),
-        Move::build(WHITE_PAWN, E2 as u8, E3 as u8),
-        Move::build(WHITE_PAWN, E2 as u8, E4 as u8),
-        Move::build(WHITE_PAWN, F2 as u8, F3 as u8),
-        Move::build(WHITE_PAWN, F2 as u8, F4 as u8),
-        Move::build(WHITE_PAWN, G2 as u8, G3 as u8),
-        Move::build(WHITE_PAWN, G2 as u8, G4 as u8),
-        Move::build(WHITE_PAWN, H2 as u8, H3 as u8),
-        Move::build(WHITE_PAWN, H2 as u8, H4 as u8),
-        Move::build(WHITE_KNIGHT, B1 as u8, A3 as u8),
-        Move::build(WHITE_KNIGHT, B1 as u8, C3 as u8),
-        Move::build(WHITE_KNIGHT, G1 as u8, F3 as u8),
-        Move::build(WHITE_KNIGHT, G1 as u8, H3 as u8),
+            Move::build(WHITE_PAWN, A2 as u8, A3 as u8),
+            Move::build(WHITE_PAWN, A2 as u8, A4 as u8),
+            Move::build(WHITE_PAWN, B2 as u8, B3 as u8),
+            Move::build(WHITE_PAWN, B2 as u8, B4 as u8),
+            Move::build(WHITE_PAWN, C2 as u8, C3 as u8),
+            Move::build(WHITE_PAWN, C2 as u8, C4 as u8),
+            Move::build(WHITE_PAWN, D2 as u8, D3 as u8),
+            Move::build(WHITE_PAWN, D2 as u8, D4 as u8),
+            Move::build(WHITE_PAWN, E2 as u8, E3 as u8),
+            Move::build(WHITE_PAWN, E2 as u8, E4 as u8),
+            Move::build(WHITE_PAWN, F2 as u8, F3 as u8),
+            Move::build(WHITE_PAWN, F2 as u8, F4 as u8),
+            Move::build(WHITE_PAWN, G2 as u8, G3 as u8),
+            Move::build(WHITE_PAWN, G2 as u8, G4 as u8),
+            Move::build(WHITE_PAWN, H2 as u8, H3 as u8),
+            Move::build(WHITE_PAWN, H2 as u8, H4 as u8),
+            Move::build(WHITE_KNIGHT, B1 as u8, A3 as u8),
+            Move::build(WHITE_KNIGHT, B1 as u8, C3 as u8),
+            Move::build(WHITE_KNIGHT, G1 as u8, F3 as u8),
+            Move::build(WHITE_KNIGHT, G1 as u8, H3 as u8),
         ]
     }
 
@@ -880,7 +888,10 @@ pub mod eval_tests {
         let mut pos = start_position();
         let (e7_col, e7_row) = get_col_and_row(crate::square::Squares::E7 as u8);
         pos.set_piece(e7_row as usize, e7_col as usize, None);
-        assert!(evaluate(pos) > 50, "White should have positive score after Black loses a pawn");
+        assert!(
+            evaluate(pos) > 50,
+            "White should have positive score after Black loses a pawn"
+        );
     }
 
     #[test]
@@ -889,7 +900,10 @@ pub mod eval_tests {
         let (g1_col, g1_row) = get_col_and_row(crate::square::Squares::G1 as u8);
         pos.set_piece(g1_row as usize, g1_col as usize, None);
         pos.turn = PieceColor::Black;
-        assert!(evaluate(pos) > 200, "Black should have positive score after White loses a knight");
+        assert!(
+            evaluate(pos) > 200,
+            "Black should have positive score after White loses a knight"
+        );
     }
 
     #[test]
@@ -897,7 +911,10 @@ pub mod eval_tests {
         let mut pos = start_position();
         let (d1_col, d1_row) = get_col_and_row(crate::square::Squares::D1 as u8);
         pos.set_piece(d1_row as usize, d1_col as usize, None);
-        assert!(evaluate(pos) < -500, "White should have negative score after losing a queen");
+        assert!(
+            evaluate(pos) < -500,
+            "White should have negative score after losing a queen"
+        );
     }
 }
 
@@ -938,7 +955,10 @@ pub mod fen_tests {
         let (e2_col, e2_row) = get_col_and_row(E2 as u8);
         let (e4_col, e4_row) = get_col_and_row(E4 as u8);
         assert!(pos.get_piece(e2_row as usize, e2_col as usize).is_none());
-        assert_eq!(pos.get_piece(e4_row as usize, e4_col as usize), Some(WHITE_PAWN));
+        assert_eq!(
+            pos.get_piece(e4_row as usize, e4_col as usize),
+            Some(WHITE_PAWN)
+        );
     }
 
     #[test]
@@ -1002,9 +1022,9 @@ pub mod fen_tests {
         let pos = parse_fen(fen).unwrap();
         let moves = legal_moves(pos);
         // There should be an en passant capture: e5 pawn captures on f6
-        let ep = moves.iter().find(|m| {
-            m.piece == WHITE_PAWN && m.from == E5 as u8 && m.to == F6 as u8 && m.capture
-        });
+        let ep = moves
+            .iter()
+            .find(|m| m.piece == WHITE_PAWN && m.from == E5 as u8 && m.to == F6 as u8 && m.capture);
         assert!(ep.is_some(), "En passant capture e5xf6 should be legal");
     }
 
@@ -1016,16 +1036,28 @@ pub mod fen_tests {
         assert_eq!(pos.turn, PieceColor::Black);
         // White bishop on c4
         let (c4_col, c4_row) = get_col_and_row(C4 as u8);
-        assert_eq!(pos.get_piece(c4_row as usize, c4_col as usize), Some(WHITE_BISHOP));
+        assert_eq!(
+            pos.get_piece(c4_row as usize, c4_col as usize),
+            Some(WHITE_BISHOP)
+        );
         // White knight on f3
         let (f3_col, f3_row) = get_col_and_row(F3 as u8);
-        assert_eq!(pos.get_piece(f3_row as usize, f3_col as usize), Some(WHITE_KNIGHT));
+        assert_eq!(
+            pos.get_piece(f3_row as usize, f3_col as usize),
+            Some(WHITE_KNIGHT)
+        );
         // Black knight on c6
         let (c6_col, c6_row) = get_col_and_row(C6 as u8);
-        assert_eq!(pos.get_piece(c6_row as usize, c6_col as usize), Some(BLACK_KNIGHT));
+        assert_eq!(
+            pos.get_piece(c6_row as usize, c6_col as usize),
+            Some(BLACK_KNIGHT)
+        );
         // Black pawn on e5
         let (e5_col, e5_row) = get_col_and_row(E5 as u8);
-        assert_eq!(pos.get_piece(e5_row as usize, e5_col as usize), Some(BLACK_PAWN));
+        assert_eq!(
+            pos.get_piece(e5_row as usize, e5_col as usize),
+            Some(BLACK_PAWN)
+        );
         // e2 is empty (pawn moved to e4)
         let (e2_col, e2_row) = get_col_and_row(E2 as u8);
         assert!(pos.get_piece(e2_row as usize, e2_col as usize).is_none());
@@ -1048,8 +1080,14 @@ pub mod fen_tests {
         let pos = parse_fen(fen).unwrap();
         let (e1_col, e1_row) = get_col_and_row(E1 as u8);
         let (e8_col, e8_row) = get_col_and_row(E8 as u8);
-        assert_eq!(pos.get_piece(e1_row as usize, e1_col as usize), Some(WHITE_KING));
-        assert_eq!(pos.get_piece(e8_row as usize, e8_col as usize), Some(BLACK_KING));
+        assert_eq!(
+            pos.get_piece(e1_row as usize, e1_col as usize),
+            Some(WHITE_KING)
+        );
+        assert_eq!(
+            pos.get_piece(e8_row as usize, e8_col as usize),
+            Some(BLACK_KING)
+        );
     }
 
     #[test]
@@ -1114,10 +1152,10 @@ pub mod fen_tests {
 }
 
 pub mod uci_tests {
-    use crate::piece::*;
     use crate::r#move::*;
-    use crate::uci::move_to_uci;
+    use crate::piece::*;
     use crate::square::Squares::*;
+    use crate::uci::move_to_uci;
 
     #[test]
     fn uci_pawn_move() {
@@ -1175,11 +1213,11 @@ pub mod uci_tests {
 }
 
 pub mod search_tests {
+    use crate::r#move::*;
     use crate::piece::*;
     use crate::position::*;
-    use crate::r#move::*;
     use crate::search::*;
-    
+
     use crate::square::Squares::*;
 
     #[test]
@@ -1192,7 +1230,12 @@ pub mod search_tests {
     #[test]
     fn node_counter_is_nonzero() {
         let pos = start_position();
-        let config = SearchConfig { max_depth: 2, time_per_move_ms: 60_000, uci_output: false, multi_pv: 1 };
+        let config = SearchConfig {
+            max_depth: 2,
+            time_per_move_ms: 60_000,
+            uci_output: false,
+            multi_pv: 1,
+        };
         let result = search_with_time(pos, config, no_stop());
         assert!(result.nodes > 0, "Search must count at least one node");
     }
@@ -1200,8 +1243,18 @@ pub mod search_tests {
     #[test]
     fn uci_output_does_not_affect_result() {
         let pos = start_position();
-        let config_silent = SearchConfig { max_depth: 3, time_per_move_ms: 60_000, uci_output: false, multi_pv: 1 };
-        let config_uci = SearchConfig { max_depth: 3, time_per_move_ms: 60_000, uci_output: true, multi_pv: 1 };
+        let config_silent = SearchConfig {
+            max_depth: 3,
+            time_per_move_ms: 60_000,
+            uci_output: false,
+            multi_pv: 1,
+        };
+        let config_uci = SearchConfig {
+            max_depth: 3,
+            time_per_move_ms: 60_000,
+            uci_output: true,
+            multi_pv: 1,
+        };
         let result_silent = search_with_time(pos, config_silent, no_stop());
         let result_uci = search_with_time(pos, config_uci, no_stop());
         assert_eq!(result_silent.best_move, result_uci.best_move);
@@ -1217,7 +1270,12 @@ pub mod search_tests {
         let moves = legal_moves(pos);
         // Verify it's actually stalemate (no legal moves for black)
         assert!(moves.is_empty());
-        let config = SearchConfig { max_depth: 5, time_per_move_ms: 60_000, uci_output: false, multi_pv: 1 };
+        let config = SearchConfig {
+            max_depth: 5,
+            time_per_move_ms: 60_000,
+            uci_output: false,
+            multi_pv: 1,
+        };
         let result = search_with_time(pos, config, no_stop());
         assert_eq!(result.nodes, 0);
     }
@@ -1225,12 +1283,31 @@ pub mod search_tests {
     #[test]
     fn node_counter_increases_with_depth() {
         let pos = parse_fen("4k3/8/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ - 0 1").unwrap();
-        let result_d1 = search_with_time(pos, SearchConfig { max_depth: 1, time_per_move_ms: 60_000, uci_output: false, multi_pv: 1 }, no_stop());
-        let result_d3 = search_with_time(pos, SearchConfig { max_depth: 3, time_per_move_ms: 60_000, uci_output: false, multi_pv: 1 }, no_stop());
+        let result_d1 = search_with_time(
+            pos,
+            SearchConfig {
+                max_depth: 1,
+                time_per_move_ms: 60_000,
+                uci_output: false,
+                multi_pv: 1,
+            },
+            no_stop(),
+        );
+        let result_d3 = search_with_time(
+            pos,
+            SearchConfig {
+                max_depth: 3,
+                time_per_move_ms: 60_000,
+                uci_output: false,
+                multi_pv: 1,
+            },
+            no_stop(),
+        );
         assert!(
             result_d3.nodes > result_d1.nodes,
             "Depth 3 ({} nodes) should search more nodes than depth 1 ({} nodes)",
-            result_d3.nodes, result_d1.nodes
+            result_d3.nodes,
+            result_d1.nodes
         );
     }
 
@@ -1253,8 +1330,10 @@ pub mod search_tests {
         // The pawn at d2 should NOT move to d3 (that opens the diagonal)
         // It should move to d4 or stay put — but legal_moves already filters.
         // Since d3 is illegal, the best move should not be d3.
-        assert!(!(m.from == crate::square::Squares::D2 as u8
-            && m.to == crate::square::Squares::D3 as u8));
+        assert!(
+            !(m.from == crate::square::Squares::D2 as u8
+                && m.to == crate::square::Squares::D3 as u8)
+        );
     }
 
     #[test]
@@ -1296,18 +1375,32 @@ pub mod search_tests {
         make_move(&mut pos, Move::build(WHITE_PAWN, D5 as u8, D6 as u8));
         make_move(&mut pos, Move::build(BLACK_ROOK, A8 as u8, A7 as u8));
         // 6. de7 — pawn on d6 captures e7, now attacks d8
-        make_move(&mut pos, Move::build(WHITE_PAWN, D6 as u8, E7 as u8).capture());
+        make_move(
+            &mut pos,
+            Move::build(WHITE_PAWN, D6 as u8, E7 as u8).capture(),
+        );
 
         // Black to move. Queen under attack by pawn on e7.
         // Depth 3 is instant and should see the hanging queen.
-        let result = search_with_time(pos, SearchConfig { max_depth: 3, time_per_move_ms: 30_000, uci_output: false, multi_pv: 1 }, no_stop());
+        let result = search_with_time(
+            pos,
+            SearchConfig {
+                max_depth: 3,
+                time_per_move_ms: 30_000,
+                uci_output: false,
+                multi_pv: 1,
+            },
+            no_stop(),
+        );
         let m = result.best_move.unwrap();
         // The engine must save the queen. It can either move the queen away,
         // or capture the attacking pawn on e7 with any piece (K, Q, B, or N).
         assert!(
             m.piece.piece_type == PieceType::Queen || m.to == E7 as u8,
             "Engine blundered! Should save queen but played {} from {} to {}",
-            crate::r#move::print_move(m), m.from, m.to
+            crate::r#move::print_move(m),
+            m.from,
+            m.to
         );
     }
 }
@@ -1315,7 +1408,7 @@ pub mod search_tests {
 #[cfg(test)]
 pub mod tactics_tests {
     use crate::position::parse_fen;
-    use crate::search::{search_with_time, SearchConfig, no_stop};
+    use crate::search::{SearchConfig, no_stop, search_with_time};
     use crate::square::Squares;
 
     fn get_best_move(fen: &str, depth: i32) -> crate::r#move::Move {
@@ -1376,29 +1469,42 @@ pub mod tactics_tests {
     #[test]
     fn search_with_multi_pv_evaluates_more_nodes() {
         use crate::position::start_position;
-        use crate::search::{search_with_time, SearchConfig, no_stop};
+        use crate::search::{SearchConfig, no_stop, search_with_time};
         let pos = start_position();
-        
-        let config_single = SearchConfig { max_depth: 3, time_per_move_ms: 60_000, uci_output: false, multi_pv: 1 };
-        let config_multi = SearchConfig { max_depth: 3, time_per_move_ms: 60_000, uci_output: false, multi_pv: 2 };
-        
+
+        let config_single = SearchConfig {
+            max_depth: 3,
+            time_per_move_ms: 60_000,
+            uci_output: false,
+            multi_pv: 1,
+        };
+        let config_multi = SearchConfig {
+            max_depth: 3,
+            time_per_move_ms: 60_000,
+            uci_output: false,
+            multi_pv: 2,
+        };
+
         let result_single = search_with_time(pos, config_single, no_stop());
         let result_multi = search_with_time(pos, config_multi, no_stop());
-        
-        assert!(result_multi.nodes > result_single.nodes, "MultiPV should evaluate more nodes");
+
+        assert!(
+            result_multi.nodes > result_single.nodes,
+            "MultiPV should evaluate more nodes"
+        );
     }
 }
 
 #[cfg(test)]
 mod tt_tests {
-    use crate::tt::{TranspositionTable, TTFlag};
+    use crate::tt::{TTFlag, TranspositionTable};
 
     #[test]
     fn test_tt_resize() {
         let mut tt = TranspositionTable::new(1);
         tt.store(12345, 5, TTFlag::Exact, 100, None);
         assert!(tt.probe(12345).is_some());
-        
+
         // Resize should allocate a new vector, effectively clearing it
         tt.resize(2);
         assert!(tt.probe(12345).is_none());
@@ -1409,7 +1515,7 @@ mod tt_tests {
         let mut tt = TranspositionTable::new(1);
         tt.store(12345, 5, TTFlag::Exact, 100, None);
         assert!(tt.probe(12345).is_some());
-        
+
         tt.clear();
         assert!(tt.probe(12345).is_none());
     }
@@ -1418,12 +1524,12 @@ mod tt_tests {
     fn test_tt_hashfull() {
         let mut tt = TranspositionTable::new(1);
         assert_eq!(tt.hashfull(), 0);
-        
+
         // Fill some entries
         for i in 1..=500 {
             tt.store(i as u64, 1, TTFlag::Exact, 0, None);
         }
-        
+
         let hashfull = tt.hashfull();
         assert!(hashfull > 0);
         assert!(hashfull <= 1000);
@@ -1437,7 +1543,7 @@ pub mod bitboard_tests {
     fn test_set_clear_test() {
         let mut bb = Bitboard::empty();
         assert!(bb.is_empty());
-        
+
         bb.set_bit(A1 as u8); // A1
         assert!(!bb.is_empty());
         assert!(bb.test_bit(A1 as u8));
@@ -1471,7 +1577,7 @@ pub mod bitboard_tests {
 
         assert_eq!(bb.lsb(), A2 as u8);
         assert_eq!(bb.pop_lsb(), A2 as u8);
-        
+
         assert_eq!(bb.lsb(), A3 as u8);
         assert_eq!(bb.pop_lsb(), A3 as u8);
 
@@ -1552,7 +1658,7 @@ pub mod attacks_tests {
         assert!(king_a1.test_bit(A2 as u8));
         assert!(king_a1.test_bit(B2 as u8));
         assert_eq!(king_a1.popcount(), 3);
-        
+
         // King at D4
         let king_d4 = KING_ATTACKS[D4 as usize];
         assert_eq!(king_d4.popcount(), 8);
@@ -1569,7 +1675,7 @@ pub mod attacks_tests {
         assert!(knight_d4.test_bit(E6 as u8));
         assert!(knight_d4.test_bit(C6 as u8));
         assert!(knight_d4.test_bit(F5 as u8));
-        
+
         // Knight at A1
         let knight_a1 = KNIGHT_ATTACKS[A1 as usize];
         assert_eq!(knight_a1.popcount(), 2);
@@ -1608,7 +1714,7 @@ pub mod attacks_tests {
         occ.set_bit(D6 as u8);
         occ.set_bit(F4 as u8);
         let rook_d4_blocked = get_rook_attacks(D4 as usize, occ);
-        
+
         // D4 blocked at D6 (North), so it can hit D5 and D6, but NOT D7 or D8
         assert!(rook_d4_blocked.test_bit(D5 as u8));
         assert!(rook_d4_blocked.test_bit(D6 as u8));
@@ -1631,16 +1737,14 @@ pub mod attacks_tests {
         let mut occ2 = Bitboard::empty();
         occ2.set_bit(E5 as u8);
         let bishop_c3_blocked = get_bishop_attacks(C3 as usize, occ2);
-        
+
         assert!(bishop_c3_blocked.test_bit(D4 as u8));
         assert!(bishop_c3_blocked.test_bit(E5 as u8));
         assert!(!bishop_c3_blocked.test_bit(F6 as u8)); // Blocked by E5
         assert!(!bishop_c3_blocked.test_bit(G7 as u8));
-        
+
         // 5. Queen at E4 combines Rook and Bishop
         let queen_e4 = get_queen_attacks(E4 as usize, empty_occ);
         assert_eq!(queen_e4.popcount(), 27); // 14 (rook) + 13 (bishop) = 27
     }
 }
-
-

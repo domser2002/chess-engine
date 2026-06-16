@@ -1,10 +1,10 @@
+use crate::eval::{evaluate, piece_value};
+use crate::r#move::Move;
+use crate::position::{Position, capture_moves, is_in_check, legal_moves, make_move, unmake_move};
 use std::io::{self, Write};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
-use crate::eval::{evaluate, piece_value};
-use crate::position::{is_in_check, legal_moves, capture_moves, make_move, unmake_move, Position};
-use crate::r#move::Move;
 
 /// Default search depth (half-moves / ply).
 const DEFAULT_DEPTH: i32 = 100;
@@ -71,12 +71,21 @@ pub struct SearchResult {
 
 /// Find the best move using iterative deepening with time management.
 /// Starts at depth 1, increases depth until time runs out, `max_depth` is reached, or `stop` is set.
-pub fn search_with_time(position: Position, config: SearchConfig, stop: Arc<AtomicBool>) -> SearchResult {
+pub fn search_with_time(
+    position: Position,
+    config: SearchConfig,
+    stop: Arc<AtomicBool>,
+) -> SearchResult {
     let mut tt = crate::tt::TranspositionTable::new(16);
     search_with_time_and_tt(position, config, stop, &mut tt)
 }
 
-pub fn search_with_time_and_tt(position: Position, config: SearchConfig, stop: Arc<AtomicBool>, tt: &mut crate::tt::TranspositionTable) -> SearchResult {
+pub fn search_with_time_and_tt(
+    position: Position,
+    config: SearchConfig,
+    stop: Arc<AtomicBool>,
+    tt: &mut crate::tt::TranspositionTable,
+) -> SearchResult {
     let mut moves = legal_moves(position);
     let mut killers = [[None; 2]; 128];
     let mut history = [[0; 70]; 70];
@@ -124,7 +133,11 @@ pub fn search_with_time_and_tt(position: Position, config: SearchConfig, stop: A
                 }
             }
 
-            let mut best = moves.iter().find(|m| !excluded_moves.contains(*m)).copied().unwrap_or(moves[0]);
+            let mut best = moves
+                .iter()
+                .find(|m| !excluded_moves.contains(*m))
+                .copied()
+                .unwrap_or(moves[0]);
             let mut best_score = MIN_SCORE;
             let mut alpha = MIN_SCORE;
 
@@ -141,7 +154,19 @@ pub fn search_with_time_and_tt(position: Position, config: SearchConfig, stop: A
 
                 let mut pos = position;
                 let undo = make_move(&mut pos, m);
-                let score = -negamax(pos, depth - 1, -MAX_SCORE, -alpha, &mut total_nodes, 1, &mut killers, &mut history, tt, deadline, &stop);
+                let score = -negamax(
+                    pos,
+                    depth - 1,
+                    -MAX_SCORE,
+                    -alpha,
+                    &mut total_nodes,
+                    1,
+                    &mut killers,
+                    &mut history,
+                    tt,
+                    deadline,
+                    &stop,
+                );
                 unmake_move(&mut pos, m, undo);
 
                 if score > best_score {
@@ -188,7 +213,9 @@ pub fn search_with_time_and_tt(position: Position, config: SearchConfig, stop: A
 
                 while pv_depth > 0 {
                     let _undo = make_move(&mut pv_pos, current_move);
-                    if visited_hashes.contains(&pv_pos.hash) { break; }
+                    if visited_hashes.contains(&pv_pos.hash) {
+                        break;
+                    }
                     visited_hashes.push(pv_pos.hash);
 
                     if let Some(entry) = tt.probe(pv_pos.hash) {
@@ -202,7 +229,11 @@ pub fn search_with_time_and_tt(position: Position, config: SearchConfig, stop: A
                     break;
                 }
 
-                let info_msg = format!("info depth {depth} multipv {} score {score_str} nodes {total_nodes} nps {nps} hashfull {} time {elapsed_ms} pv {pv_str}", pv_idx + 1, tt.hashfull());
+                let info_msg = format!(
+                    "info depth {depth} multipv {} score {score_str} nodes {total_nodes} nps {nps} hashfull {} time {elapsed_ms} pv {pv_str}",
+                    pv_idx + 1,
+                    tt.hashfull()
+                );
                 println!("{info_msg}");
                 io::stdout().flush().unwrap();
                 let mut log_file = std::fs::OpenOptions::new()
@@ -248,7 +279,19 @@ pub fn best_move_depth(position: Position, depth: i32) -> Option<Move> {
 
 /// Negamax with alpha-beta pruning.
 /// `nodes` is incremented for every position evaluated.
-fn negamax(position: Position, depth: i32, mut alpha: i32, beta: i32, nodes: &mut u64, ply: usize, killers: &mut [[Option<Move>; 2]; 128], history: &mut [[i32; 70]; 70], tt: &mut crate::tt::TranspositionTable, deadline: Instant, stop: &Arc<AtomicBool>) -> i32 {
+fn negamax(
+    position: Position,
+    depth: i32,
+    mut alpha: i32,
+    beta: i32,
+    nodes: &mut u64,
+    ply: usize,
+    killers: &mut [[Option<Move>; 2]; 128],
+    history: &mut [[i32; 70]; 70],
+    tt: &mut crate::tt::TranspositionTable,
+    deadline: Instant,
+    stop: &Arc<AtomicBool>,
+) -> i32 {
     *nodes += 1;
 
     if (*nodes & 2047) == 0 {
@@ -290,12 +333,24 @@ fn negamax(position: Position, depth: i32, mut alpha: i32, beta: i32, nodes: &mu
     if depth >= 3 && !in_check && position.has_non_pawn_material(position.turn) {
         let mut pos = position;
         let undo = pos.make_null_move();
-        
+
         let r = 2; // Depth reduction for null move
-        let val = -negamax(pos, depth - 1 - r, -beta, -beta + 1, nodes, ply + 1, killers, history, tt, deadline, stop);
-        
+        let val = -negamax(
+            pos,
+            depth - 1 - r,
+            -beta,
+            -beta + 1,
+            nodes,
+            ply + 1,
+            killers,
+            history,
+            tt,
+            deadline,
+            stop,
+        );
+
         pos.unmake_null_move(undo);
-        
+
         if val >= beta {
             return beta;
         }
@@ -321,7 +376,19 @@ fn negamax(position: Position, depth: i32, mut alpha: i32, beta: i32, nodes: &mu
     for &m in &moves {
         let mut pos = position;
         let undo = make_move(&mut pos, m);
-        let val = -negamax(pos, depth - 1 + extension, -beta, -alpha, nodes, ply + 1, killers, history, tt, deadline, stop);
+        let val = -negamax(
+            pos,
+            depth - 1 + extension,
+            -beta,
+            -alpha,
+            nodes,
+            ply + 1,
+            killers,
+            history,
+            tt,
+            deadline,
+            stop,
+        );
         unmake_move(&mut pos, m, undo);
 
         if val >= beta {
@@ -334,7 +401,13 @@ fn negamax(position: Position, depth: i32, mut alpha: i32, beta: i32, nodes: &mu
                 let v = &mut history[m.from as usize][m.to as usize];
                 *v = v.saturating_add(bonus);
             }
-            tt.store(position.hash, depth as u8, crate::tt::TTFlag::Beta, store_score(beta, ply), Some(m));
+            tt.store(
+                position.hash,
+                depth as u8,
+                crate::tt::TTFlag::Beta,
+                store_score(beta, ply),
+                Some(m),
+            );
             return beta;
         }
         if val > score {
@@ -351,13 +424,28 @@ fn negamax(position: Position, depth: i32, mut alpha: i32, beta: i32, nodes: &mu
     } else {
         crate::tt::TTFlag::Exact
     };
-    tt.store(position.hash, depth as u8, flag, store_score(score, ply), best_move);
+    tt.store(
+        position.hash,
+        depth as u8,
+        flag,
+        store_score(score, ply),
+        best_move,
+    );
 
     score
 }
 
 /// Quiescence search: resolves capture sequences beyond the search horizon to avoid the horizon effect.
-fn quiescence(position: Position, mut alpha: i32, beta: i32, nodes: &mut u64, ply: usize, killers: &mut [[Option<Move>; 2]; 128], deadline: Instant, stop: &Arc<AtomicBool>) -> i32 {
+fn quiescence(
+    position: Position,
+    mut alpha: i32,
+    beta: i32,
+    nodes: &mut u64,
+    ply: usize,
+    killers: &mut [[Option<Move>; 2]; 128],
+    deadline: Instant,
+    stop: &Arc<AtomicBool>,
+) -> i32 {
     *nodes += 1;
 
     if (*nodes & 2047) == 0 {
@@ -402,7 +490,14 @@ fn quiescence(position: Position, mut alpha: i32, beta: i32, nodes: &mut u64, pl
 }
 
 /// Score a move for move ordering (MVV-LVA and Killers).
-fn score_move(position: &Position, m: &Move, ply: usize, killers: &[[Option<Move>; 2]; 128], history: &[[i32; 70]; 70], tt_move: Option<Move>) -> i32 {
+fn score_move(
+    position: &Position,
+    m: &Move,
+    ply: usize,
+    killers: &[[Option<Move>; 2]; 128],
+    history: &[[i32; 70]; 70],
+    tt_move: Option<Move>,
+) -> i32 {
     if Some(*m) == tt_move {
         return 10_000_000;
     }
@@ -428,6 +523,13 @@ fn score_move(position: &Position, m: &Move, ply: usize, killers: &[[Option<Move
 }
 
 /// Order moves to improve alpha-beta pruning efficiency.
-fn order_moves(position: &Position, moves: &mut [Move], ply: usize, killers: &[[Option<Move>; 2]; 128], history: &[[i32; 70]; 70], tt_move: Option<Move>) {
+fn order_moves(
+    position: &Position,
+    moves: &mut [Move],
+    ply: usize,
+    killers: &[[Option<Move>; 2]; 128],
+    history: &[[i32; 70]; 70],
+    tt_move: Option<Move>,
+) {
     moves.sort_unstable_by_key(|m| -score_move(position, m, ply, killers, history, tt_move));
 }

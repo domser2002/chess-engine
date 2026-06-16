@@ -1,10 +1,10 @@
+use crate::r#move::{LONG_CASTLING_SQUARE, Move, SHORT_CASTLING_SQUARE, parse_move_uci};
+use crate::piece::{PieceColor, PieceType};
+use crate::position::{self, Position, make_move, start_position};
 use std::io::{self, BufRead, Write};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread::{self, JoinHandle};
-use crate::piece::{PieceColor, PieceType};
-use crate::position::{self, start_position, Position, make_move};
-use crate::r#move::{parse_move_uci, Move, SHORT_CASTLING_SQUARE, LONG_CASTLING_SQUARE};
 
 /// Run the UCI protocol loop — reads commands from stdin until "quit" or EOF.
 pub fn uci_loop() {
@@ -12,7 +12,9 @@ pub fn uci_loop() {
     let mut position = start_position();
     let stop = Arc::new(AtomicBool::new(false));
     let mut search_handle: Option<JoinHandle<()>> = None;
-    let tt = Arc::new(std::sync::RwLock::new(crate::tt::TranspositionTable::new(16)));
+    let tt = Arc::new(std::sync::RwLock::new(crate::tt::TranspositionTable::new(
+        16,
+    )));
     let mut multi_pv_setting = 1;
 
     let mut log_file = std::fs::OpenOptions::new()
@@ -20,7 +22,7 @@ pub fn uci_loop() {
         .append(true)
         .open("/tmp/chess_uci.log")
         .unwrap_or_else(|_| std::fs::File::create("/dev/null").unwrap());
-        
+
     writeln!(log_file, "--- ENGINE STARTED ---").ok();
 
     for line in stdin.lock().lines() {
@@ -33,7 +35,7 @@ pub fn uci_loop() {
         if trimmed.is_empty() {
             continue;
         }
-        
+
         writeln!(log_file, "> {trimmed}").ok();
 
         if trimmed == "quit" {
@@ -112,7 +114,7 @@ pub fn uci_loop() {
 
             if let Some(params) = trimmed.strip_prefix("go ") {
                 let tokens: Vec<&str> = params.split_whitespace().collect();
-                
+
                 let mut is_infinite = false;
                 let mut wtime: Option<u64> = None;
                 let mut btime: Option<u64> = None;
@@ -120,18 +122,23 @@ pub fn uci_loop() {
                 let mut binc: Option<u64> = None;
                 let mut movestogo: Option<u64> = None;
                 let mut movetime: Option<u64> = None;
-                
+
                 for (i, token) in tokens.iter().enumerate() {
                     match *token {
                         "infinite" => is_infinite = true,
-                        "movetime" => movetime = tokens.get(i + 1).and_then(|s| s.parse::<u64>().ok()),
+                        "movetime" => {
+                            movetime = tokens.get(i + 1).and_then(|s| s.parse::<u64>().ok())
+                        }
                         "wtime" => wtime = tokens.get(i + 1).and_then(|s| s.parse::<u64>().ok()),
                         "btime" => btime = tokens.get(i + 1).and_then(|s| s.parse::<u64>().ok()),
                         "winc" => winc = tokens.get(i + 1).and_then(|s| s.parse::<u64>().ok()),
                         "binc" => binc = tokens.get(i + 1).and_then(|s| s.parse::<u64>().ok()),
-                        "movestogo" => movestogo = tokens.get(i + 1).and_then(|s| s.parse::<u64>().ok()),
+                        "movestogo" => {
+                            movestogo = tokens.get(i + 1).and_then(|s| s.parse::<u64>().ok())
+                        }
                         "depth" => {
-                            if let Some(val) = tokens.get(i + 1).and_then(|s| s.parse::<i32>().ok()) {
+                            if let Some(val) = tokens.get(i + 1).and_then(|s| s.parse::<i32>().ok())
+                            {
                                 config.max_depth = val;
                                 config.time_per_move_ms = 60_000;
                             }
@@ -155,15 +162,19 @@ pub fn uci_loop() {
                     if let Some(t) = time_left {
                         // Estimate moves left if not provided
                         let moves_left = movestogo.unwrap_or(30).max(1);
-                        
+
                         let base_time = t / moves_left;
                         // Use only a fraction of the increment to avoid time trouble
-                        let increment = inc.unwrap_or(0) * 3 / 4; 
-                        
+                        let increment = inc.unwrap_or(0) * 3 / 4;
+
                         let total_time = base_time + increment;
                         // Keep a small 50ms buffer so we don't flag on the last millisecond
                         let safe_buffer = 50;
-                        config.time_per_move_ms = if total_time > safe_buffer { total_time - safe_buffer } else { 10 };
+                        config.time_per_move_ms = if total_time > safe_buffer {
+                            total_time - safe_buffer
+                        } else {
+                            10
+                        };
                     }
                 }
             }
@@ -173,7 +184,8 @@ pub fn uci_loop() {
             let tt_clone = Arc::clone(&tt);
             search_handle = Some(thread::spawn(move || {
                 let mut tt_guard = tt_clone.write().unwrap();
-                let result = crate::search::search_with_time_and_tt(pos, config, stop_clone, &mut tt_guard);
+                let result =
+                    crate::search::search_with_time_and_tt(pos, config, stop_clone, &mut tt_guard);
                 let uci_str = match result.best_move {
                     Some(m) => move_to_uci(m),
                     None => "0000".to_string(),
@@ -181,7 +193,7 @@ pub fn uci_loop() {
                 let bestmove_msg = format!("bestmove {uci_str}");
                 println!("{bestmove_msg}");
                 io::stdout().flush().unwrap();
-                
+
                 let mut log_file = std::fs::OpenOptions::new()
                     .create(true)
                     .append(true)

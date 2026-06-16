@@ -48,7 +48,7 @@ impl TranspositionTable {
         if size == 0 {
             size = 1;
         }
-        
+
         Self {
             entries: vec![TTEntry::default(); size],
             size_mask: size - 1,
@@ -88,7 +88,9 @@ impl TranspositionTable {
     #[must_use]
     #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
     pub fn hashfull(&self) -> i32 {
-        if self.entries.is_empty() { return 0; }
+        if self.entries.is_empty() {
+            return 0;
+        }
         let max_entries = self.entries.len().min(1000);
         let mut used = 0;
         for i in 0..max_entries {
@@ -100,7 +102,14 @@ impl TranspositionTable {
     }
 
     #[allow(clippy::cast_possible_truncation)]
-    pub fn store(&mut self, hash: u64, depth: u8, flag: TTFlag, score: i32, best_move: Option<Move>) {
+    pub fn store(
+        &mut self,
+        hash: u64,
+        depth: u8,
+        flag: TTFlag,
+        score: i32,
+        best_move: Option<Move>,
+    ) {
         let index = (hash as usize) & self.size_mask;
         // Always replace strategy (or replace if depth >= current)
         // For simplicity and good performance, always replace is fine.
