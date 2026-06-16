@@ -141,7 +141,7 @@ pub fn search_with_time_and_tt(position: Position, config: SearchConfig, stop: A
 
                 let mut pos = position;
                 let undo = make_move(&mut pos, m);
-                let score = -negamax(pos, depth - 1, -MAX_SCORE, -alpha, &mut total_nodes, 1, &mut killers, &mut history, tt);
+                let score = -negamax(pos, depth - 1, -MAX_SCORE, -alpha, &mut total_nodes, 1, &mut killers, &mut history, tt, deadline, &stop);
                 unmake_move(&mut pos, m, undo);
 
                 if score > best_score {
@@ -248,11 +248,18 @@ pub fn best_move_depth(position: Position, depth: i32) -> Option<Move> {
 
 /// Negamax with alpha-beta pruning.
 /// `nodes` is incremented for every position evaluated.
-fn negamax(position: Position, depth: i32, mut alpha: i32, beta: i32, nodes: &mut u64, ply: usize, killers: &mut [[Option<Move>; 2]; 128], history: &mut [[i32; 70]; 70], tt: &mut crate::tt::TranspositionTable) -> i32 {
+fn negamax(position: Position, depth: i32, mut alpha: i32, beta: i32, nodes: &mut u64, ply: usize, killers: &mut [[Option<Move>; 2]; 128], history: &mut [[i32; 70]; 70], tt: &mut crate::tt::TranspositionTable, deadline: Instant, stop: &Arc<AtomicBool>) -> i32 {
     *nodes += 1;
 
-    if depth == 0 {
-        return quiescence(position, alpha, beta, nodes, ply, killers);
+    if (*nodes & 2047) == 0 {
+        if Instant::now() >= deadline || stop.load(Ordering::Relaxed) {
+            stop.store(true, Ordering::Relaxed);
+            return 0;
+        }
+    }
+
+    if depth <= 0 {
+        return quiescence(position, alpha, beta, nodes, ply, killers, deadline, stop);
     }
 
     let mut tt_move = None;
@@ -285,7 +292,7 @@ fn negamax(position: Position, depth: i32, mut alpha: i32, beta: i32, nodes: &mu
         let undo = pos.make_null_move();
         
         let r = 2; // Depth reduction for null move
-        let val = -negamax(pos, depth - 1 - r, -beta, -beta + 1, nodes, ply + 1, killers, history, tt);
+        let val = -negamax(pos, depth - 1 - r, -beta, -beta + 1, nodes, ply + 1, killers, history, tt, deadline, stop);
         
         pos.unmake_null_move(undo);
         
@@ -314,7 +321,7 @@ fn negamax(position: Position, depth: i32, mut alpha: i32, beta: i32, nodes: &mu
     for &m in &moves {
         let mut pos = position;
         let undo = make_move(&mut pos, m);
-        let val = -negamax(pos, depth - 1 + extension, -beta, -alpha, nodes, ply + 1, killers, history, tt);
+        let val = -negamax(pos, depth - 1 + extension, -beta, -alpha, nodes, ply + 1, killers, history, tt, deadline, stop);
         unmake_move(&mut pos, m, undo);
 
         if val >= beta {
@@ -350,8 +357,15 @@ fn negamax(position: Position, depth: i32, mut alpha: i32, beta: i32, nodes: &mu
 }
 
 /// Quiescence search: resolves capture sequences beyond the search horizon to avoid the horizon effect.
-fn quiescence(position: Position, mut alpha: i32, beta: i32, nodes: &mut u64, ply: usize, killers: &mut [[Option<Move>; 2]; 128]) -> i32 {
+fn quiescence(position: Position, mut alpha: i32, beta: i32, nodes: &mut u64, ply: usize, killers: &mut [[Option<Move>; 2]; 128], deadline: Instant, stop: &Arc<AtomicBool>) -> i32 {
     *nodes += 1;
+
+    if (*nodes & 2047) == 0 {
+        if Instant::now() >= deadline || stop.load(Ordering::Relaxed) {
+            stop.store(true, Ordering::Relaxed);
+            return 0;
+        }
+    }
 
     let stand_pat = evaluate(position);
     if stand_pat >= beta {
@@ -370,7 +384,7 @@ fn quiescence(position: Position, mut alpha: i32, beta: i32, nodes: &mut u64, pl
     for &m in &moves {
         let mut pos = position;
         let undo = make_move(&mut pos, m);
-        let val = -quiescence(pos, -beta, -alpha, nodes, ply + 1, killers);
+        let val = -quiescence(pos, -beta, -alpha, nodes, ply + 1, killers, deadline, stop);
         unmake_move(&mut pos, m, undo);
 
         if val >= beta {

@@ -81,6 +81,78 @@ const MG_KING: [i32; 64] = [
     -15,  36,  12, -54,   8, -28,  24,  14,
 ];
 
+#[rustfmt::skip]
+const EG_PAWN: [i32; 64] = [
+      0,   0,   0,   0,   0,   0,   0,   0,
+    178, 173, 158, 134, 147, 132, 165, 187,
+     94, 100,  85,  67,  56,  53,  82,  84,
+     32,  24,  13,   5,  -2,   4,  17,  17,
+     13,   9,  -3,  -7,  -7,  -8,   3,  -1,
+      4,   7,  -6,   1,   0,  -5,  -1,  -8,
+     13,   8,   8,  10,  13,   0,   2,  -7,
+      0,   0,   0,   0,   0,   0,   0,   0,
+];
+
+#[rustfmt::skip]
+const EG_KNIGHT: [i32; 64] = [
+    -58, -38, -13, -28, -31, -27, -63, -99,
+    -25,  -8, -25,  -2,  -9, -25, -24, -52,
+    -24, -20,  10,   9,  -1,  -9, -19, -41,
+    -17,   3,  22,  22,  22,  11,   8, -18,
+    -18,  -6,  16,  25,  16,  17,   4, -18,
+    -23,  -3,  -1,  15,  10,  -3, -20, -22,
+    -42, -20, -10,  -5,  -2, -20, -23, -44,
+    -29, -51, -23, -15, -22, -18, -50, -64,
+];
+
+#[rustfmt::skip]
+const EG_BISHOP: [i32; 64] = [
+    -14, -21, -11,  -8,  -7,  -9, -17, -24,
+     -8,  -4,   7, -12,  -3, -13,  -4, -14,
+      2,  -8,   0,  -1,  -2,   6,   0,   4,
+     -3,   9,  12,   9,  14,  10,   3,   2,
+     -6,   3,  13,  19,   7,  10,  -3,  -9,
+    -12,  -3,   8,  10,  13,   3,  -7, -15,
+    -14, -18,  -7,  -1,   4,  -9, -15, -27,
+    -23,  -9, -23,  -5,  -9, -16,  -5, -17,
+];
+
+#[rustfmt::skip]
+const EG_ROOK: [i32; 64] = [
+     13,  10,  18,  15,  12,   12,   8,   5,
+     11,  13,  13,  11,  -3,    3,   8,   3,
+      7,   7,   7,   5,   4,   -3,  -5,  -3,
+      4,   3,  13,   1,   2,    1,  -1,   2,
+      3,   5,   8,   4,  -5,   -6,  -8, -11,
+     -4,   0,  -5,  -1,  -7,  -12,  -8, -16,
+     -6,  -6,   0,   2,  -9,   -9, -11,  -3,
+     -9,   2,   3,  -1,  -5,  -13,   4, -20,
+];
+
+#[rustfmt::skip]
+const EG_QUEEN: [i32; 64] = [
+     -9,  22,  22,  27,  27,  19,  10,  20,
+    -17,  20,  32,  41,  58,  25,  30,   0,
+    -20,   6,   9,  49,  47,  35,  19,   9,
+      3,  22,  24,  45,  57,  40,  57,  36,
+    -18,  28,  19,  47,  31,  34,  12,  11,
+    -16, -27,  15,   6,   9,  17,  10,   5,
+    -22, -23, -30, -16, -16, -23, -36, -32,
+    -33, -28, -22, -43,  -5, -32, -20, -41,
+];
+
+#[rustfmt::skip]
+const EG_KING: [i32; 64] = [
+    -74, -35, -18, -18, -11,  15,   4, -17,
+    -12,  17,  14,  17,  17,  38,  23,  11,
+     10,  17,  23,  15,  20,  45,  44,  13,
+     -8,  22,  24,  27,  26,  33,  26,   3,
+    -18,  -4,  21,  24,  27,  23,   9, -11,
+    -19,  -3,  11,  21,  23,  16,   7,  -9,
+    -27, -11,   4,  13,  14,   4,  -5, -17,
+    -53, -34, -21, -11, -28, -14, -24, -43,
+];
+
 pub fn piece_value(piece: Piece) -> i32 {
     match piece.piece_type {
         PieceType::Pawn => PAWN_VALUE,
@@ -96,44 +168,59 @@ pub fn piece_value(piece: Piece) -> i32 {
 /// Positive = good for the side to move, negative = bad.
 /// Material only — no piece-square tables yet.
 pub fn evaluate(position: Position) -> i32 {
-    let mut score = 0i32;
+    let mut mg_score = 0i32;
+    let mut eg_score = 0i32;
+    let mut phase = 0i32;
 
     for row in 0..8 {
         for col in 0..8 {
             if let Some(piece) = position.pieces[row][col] {
-                let mut val = piece_value(piece);
+                let base_val = piece_value(piece);
                 
                 // Add piece-square table value
-                let white_idx = (7 - row) * 8 + col; // From White's perspective (row 0 is rank 1)
+                let white_idx = (7 - row) * 8 + col; // From White's perspective
                 let black_idx = row * 8 + col; // Flipped for Black
                 
-                match piece.piece_color {
-                    PieceColor::White => {
-                        val += match piece.piece_type {
-                            PieceType::Pawn => MG_PAWN[white_idx],
-                            PieceType::Knight => MG_KNIGHT[white_idx],
-                            PieceType::Bishop => MG_BISHOP[white_idx],
-                            PieceType::Rook => MG_ROOK[white_idx],
-                            PieceType::Queen => MG_QUEEN[white_idx],
-                            PieceType::King => MG_KING[white_idx],
-                        };
-                        score += val;
-                    }
-                    PieceColor::Black => {
-                        val += match piece.piece_type {
-                            PieceType::Pawn => MG_PAWN[black_idx],
-                            PieceType::Knight => MG_KNIGHT[black_idx],
-                            PieceType::Bishop => MG_BISHOP[black_idx],
-                            PieceType::Rook => MG_ROOK[black_idx],
-                            PieceType::Queen => MG_QUEEN[black_idx],
-                            PieceType::King => MG_KING[black_idx],
-                        };
-                        score -= val;
-                    }
+                let (mg_pst, eg_pst) = match piece.piece_color {
+                    PieceColor::White => match piece.piece_type {
+                        PieceType::Pawn => (MG_PAWN[white_idx], EG_PAWN[white_idx]),
+                        PieceType::Knight => (MG_KNIGHT[white_idx], EG_KNIGHT[white_idx]),
+                        PieceType::Bishop => (MG_BISHOP[white_idx], EG_BISHOP[white_idx]),
+                        PieceType::Rook => (MG_ROOK[white_idx], EG_ROOK[white_idx]),
+                        PieceType::Queen => (MG_QUEEN[white_idx], EG_QUEEN[white_idx]),
+                        PieceType::King => (MG_KING[white_idx], EG_KING[white_idx]),
+                    },
+                    PieceColor::Black => match piece.piece_type {
+                        PieceType::Pawn => (MG_PAWN[black_idx], EG_PAWN[black_idx]),
+                        PieceType::Knight => (MG_KNIGHT[black_idx], EG_KNIGHT[black_idx]),
+                        PieceType::Bishop => (MG_BISHOP[black_idx], EG_BISHOP[black_idx]),
+                        PieceType::Rook => (MG_ROOK[black_idx], EG_ROOK[black_idx]),
+                        PieceType::Queen => (MG_QUEEN[black_idx], EG_QUEEN[black_idx]),
+                        PieceType::King => (MG_KING[black_idx], EG_KING[black_idx]),
+                    },
+                };
+                
+                // Calculate phase (Knights=1, Bishops=1, Rooks=2, Queens=4)
+                match piece.piece_type {
+                    PieceType::Knight | PieceType::Bishop => phase += 1,
+                    PieceType::Rook => phase += 2,
+                    PieceType::Queen => phase += 4,
+                    _ => {}
+                }
+
+                if piece.piece_color == PieceColor::White {
+                    mg_score += base_val + mg_pst;
+                    eg_score += base_val + eg_pst;
+                } else {
+                    mg_score -= base_val + mg_pst;
+                    eg_score -= base_val + eg_pst;
                 }
             }
         }
     }
+    
+    let phase = phase.min(24);
+    let score = (mg_score * phase + eg_score * (24 - phase)) / 24;
 
     // Return from perspective of the side to move
     match position.turn {
