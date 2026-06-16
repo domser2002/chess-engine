@@ -169,6 +169,11 @@ pub fn search_with_time_and_tt(
                 );
                 unmake_move(&mut pos, m, undo);
 
+                if stop.load(Ordering::Relaxed) {
+                    iteration_completed = false;
+                    break;
+                }
+
                 if score > best_score {
                     best_score = score;
                     best = m;
@@ -351,6 +356,10 @@ fn negamax(
 
         pos.unmake_null_move(undo);
 
+        if stop.load(Ordering::Relaxed) {
+            return 0;
+        }
+
         if val >= beta {
             return beta;
         }
@@ -390,6 +399,10 @@ fn negamax(
             stop,
         );
         unmake_move(&mut pos, m, undo);
+
+        if stop.load(Ordering::Relaxed) {
+            return 0;
+        }
 
         if val >= beta {
             if !m.capture {
@@ -474,6 +487,10 @@ fn quiescence(
         let undo = make_move(&mut pos, m);
         let val = -quiescence(pos, -beta, -alpha, nodes, ply + 1, killers, deadline, stop);
         unmake_move(&mut pos, m, undo);
+
+        if stop.load(Ordering::Relaxed) {
+            return 0;
+        }
 
         if val >= beta {
             return beta;
