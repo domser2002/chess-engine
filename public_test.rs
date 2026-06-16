@@ -1588,6 +1588,57 @@ pub mod attacks_tests {
         assert_eq!(b_pawn.popcount(), 1); // Only G6, H file edge
         assert!(b_pawn.test_bit(G6 as u8));
     }
+
+    #[test]
+    fn test_sliding_attacks() {
+        use crate::bitboard::Bitboard;
+        // Pre-initialize magics for the tests to ensure thread-safety if run concurrently
+        let empty_occ = Bitboard::empty();
+
+        // 1. Rook at D4 on an empty board
+        let rook_d4 = get_rook_attacks(D4 as usize, empty_occ);
+        assert_eq!(rook_d4.popcount(), 14); // 7 horizontal + 7 vertical
+        assert!(rook_d4.test_bit(D8 as u8)); // Can reach top
+        assert!(rook_d4.test_bit(H4 as u8)); // Can reach right
+
+        // 2. Rook at D4 with a blocker at D6 and F4
+        let mut occ = Bitboard::empty();
+        occ.set_bit(D6 as u8);
+        occ.set_bit(F4 as u8);
+        let rook_d4_blocked = get_rook_attacks(D4 as usize, occ);
+        
+        // D4 blocked at D6 (North), so it can hit D5 and D6, but NOT D7 or D8
+        assert!(rook_d4_blocked.test_bit(D5 as u8));
+        assert!(rook_d4_blocked.test_bit(D6 as u8));
+        assert!(!rook_d4_blocked.test_bit(D7 as u8));
+        assert!(!rook_d4_blocked.test_bit(D8 as u8));
+
+        // D4 blocked at F4 (East), so it can hit E4 and F4, but NOT G4 or H4
+        assert!(rook_d4_blocked.test_bit(E4 as u8));
+        assert!(rook_d4_blocked.test_bit(F4 as u8));
+        assert!(!rook_d4_blocked.test_bit(G4 as u8));
+        assert!(!rook_d4_blocked.test_bit(H4 as u8));
+
+        // 3. Bishop at C3 on an empty board
+        let bishop_c3 = get_bishop_attacks(C3 as usize, empty_occ);
+        assert_eq!(bishop_c3.popcount(), 11);
+        assert!(bishop_c3.test_bit(A1 as u8));
+        assert!(bishop_c3.test_bit(H8 as u8));
+
+        // 4. Bishop at C3 blocked at E5
+        let mut occ2 = Bitboard::empty();
+        occ2.set_bit(E5 as u8);
+        let bishop_c3_blocked = get_bishop_attacks(C3 as usize, occ2);
+        
+        assert!(bishop_c3_blocked.test_bit(D4 as u8));
+        assert!(bishop_c3_blocked.test_bit(E5 as u8));
+        assert!(!bishop_c3_blocked.test_bit(F6 as u8)); // Blocked by E5
+        assert!(!bishop_c3_blocked.test_bit(G7 as u8));
+        
+        // 5. Queen at E4 combines Rook and Bishop
+        let queen_e4 = get_queen_attacks(E4 as usize, empty_occ);
+        assert_eq!(queen_e4.popcount(), 27); // 14 (rook) + 13 (bishop) = 27
+    }
 }
 
 

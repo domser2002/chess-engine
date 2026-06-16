@@ -9,6 +9,7 @@ mod search;
 pub mod zobrist;
 pub mod tt;
 pub mod bitboard;
+pub mod magics;
 pub mod attacks;
 mod perft;
 mod bench;
