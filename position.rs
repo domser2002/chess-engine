@@ -21,6 +21,9 @@ pub struct Position {
     pub black_short_castle: bool,
     pub black_long_castle: bool,
     pub hash: u64,
+    pub mg_score: i32,
+    pub eg_score: i32,
+    pub phase: i32,
 }
 
 impl Position {
@@ -84,6 +87,19 @@ impl Position {
         let mask = 1u64 << sq;
         let not_mask = !mask;
 
+        // If there was a piece here, subtract its score
+        if let Some(old_p) = self.get_piece(row, col) {
+            let (mg, eg, ph) = crate::eval::evaluate_piece_incremental(old_p.piece_type as usize, old_p.piece_color == PieceColor::White, sq);
+            if old_p.piece_color == PieceColor::White {
+                self.mg_score -= mg;
+                self.eg_score -= eg;
+            } else {
+                self.mg_score += mg;
+                self.eg_score += eg;
+            }
+            self.phase -= ph;
+        }
+
         // Clear existing
         self.piece_colors[0].0 &= not_mask;
         self.piece_colors[1].0 &= not_mask;
@@ -94,6 +110,16 @@ impl Position {
         if let Some(p) = piece {
             self.piece_colors[p.piece_color as usize].0 |= mask;
             self.piece_types[p.piece_type as usize].0 |= mask;
+            
+            let (mg, eg, ph) = crate::eval::evaluate_piece_incremental(p.piece_type as usize, p.piece_color == PieceColor::White, sq);
+            if p.piece_color == PieceColor::White {
+                self.mg_score += mg;
+                self.eg_score += eg;
+            } else {
+                self.mg_score -= mg;
+                self.eg_score -= eg;
+            }
+            self.phase += ph;
         }
     }
 }
@@ -128,6 +154,9 @@ pub fn empty_position(turn: PieceColor) -> Position {
         black_short_castle: false,
         black_long_castle: false,
         hash: 0,
+        mg_score: 0,
+        eg_score: 0,
+        phase: 0,
     }
 }
 

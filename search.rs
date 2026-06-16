@@ -520,10 +520,22 @@ fn score_move(
     }
     if m.capture {
         let (col, row) = crate::square::get_col_and_row(m.to);
-        let victim_val = match position.get_piece(row as usize, col as usize) {
-            Some(p) => piece_value(p),
-            None => 100, // En passant capture victim is always a pawn
-        };
+        let sq = row * 8 + col;
+        let to_bit = 1u64 << sq;
+        let mut victim_val = 100; // En passant victim
+        for pt in 0..6 {
+            if (position.piece_types[pt].0 & to_bit) != 0 {
+                victim_val = match pt {
+                    0 => 100, // Pawn
+                    1 => 320, // Knight
+                    2 => 330, // Bishop
+                    3 => 500, // Rook
+                    4 => 900, // Queen
+                    _ => 100, // King
+                };
+                break;
+            }
+        }
         let attacker_val = piece_value(m.piece);
         // MVV-LVA: Most Valuable Victim - Least Valuable Attacker
         1_000_000 + 10 * victim_val - attacker_val

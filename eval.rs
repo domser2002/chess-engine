@@ -167,62 +167,46 @@ pub fn piece_value(piece: Piece) -> i32 {
 /// Evaluate a position from the side-to-move's perspective.
 /// Positive = good for the side to move, negative = bad.
 /// Material only — no piece-square tables yet.
+
+pub fn evaluate_piece_incremental(piece_type: usize, is_white: bool, sq: usize) -> (i32, i32, i32) {
+    let base_val = match piece_type {
+        0 => PAWN_VALUE,
+        1 => KNIGHT_VALUE,
+        2 => BISHOP_VALUE,
+        3 => ROOK_VALUE,
+        4 => QUEEN_VALUE,
+        5 => KING_VALUE,
+        _ => 0,
+    };
+    
+    let white_idx = (7 - sq / 8) * 8 + (sq % 8);
+    let black_idx = sq;
+    let idx = if is_white { white_idx } else { black_idx };
+
+    let (mg_pst, eg_pst) = match piece_type {
+        0 => (MG_PAWN[idx], EG_PAWN[idx]),
+        1 => (MG_KNIGHT[idx], EG_KNIGHT[idx]),
+        2 => (MG_BISHOP[idx], EG_BISHOP[idx]),
+        3 => (MG_ROOK[idx], EG_ROOK[idx]),
+        4 => (MG_QUEEN[idx], EG_QUEEN[idx]),
+        5 => (MG_KING[idx], EG_KING[idx]),
+        _ => (0, 0),
+    };
+
+    let phase = match piece_type {
+        1 | 2 => 1,
+        3 => 2,
+        4 => 4,
+        _ => 0,
+    };
+
+    (base_val + mg_pst, base_val + eg_pst, phase)
+}
+
 pub fn evaluate(position: Position) -> i32 {
-    let mut mg_score = 0i32;
-    let mut eg_score = 0i32;
-    let mut phase = 0i32;
+    let phase = position.phase.min(24);
+    let score = (position.mg_score * phase + position.eg_score * (24 - phase)) / 24;
 
-    for row in 0..8 {
-        for col in 0..8 {
-            if let Some(piece) = position.get_piece(row, col) {
-                let base_val = piece_value(piece);
-
-                // Add piece-square table value
-                let white_idx = (7 - row) * 8 + col; // From White's perspective
-                let black_idx = row * 8 + col; // Flipped for Black
-
-                let (mg_pst, eg_pst) = match piece.piece_color {
-                    PieceColor::White => match piece.piece_type {
-                        PieceType::Pawn => (MG_PAWN[white_idx], EG_PAWN[white_idx]),
-                        PieceType::Knight => (MG_KNIGHT[white_idx], EG_KNIGHT[white_idx]),
-                        PieceType::Bishop => (MG_BISHOP[white_idx], EG_BISHOP[white_idx]),
-                        PieceType::Rook => (MG_ROOK[white_idx], EG_ROOK[white_idx]),
-                        PieceType::Queen => (MG_QUEEN[white_idx], EG_QUEEN[white_idx]),
-                        PieceType::King => (MG_KING[white_idx], EG_KING[white_idx]),
-                    },
-                    PieceColor::Black => match piece.piece_type {
-                        PieceType::Pawn => (MG_PAWN[black_idx], EG_PAWN[black_idx]),
-                        PieceType::Knight => (MG_KNIGHT[black_idx], EG_KNIGHT[black_idx]),
-                        PieceType::Bishop => (MG_BISHOP[black_idx], EG_BISHOP[black_idx]),
-                        PieceType::Rook => (MG_ROOK[black_idx], EG_ROOK[black_idx]),
-                        PieceType::Queen => (MG_QUEEN[black_idx], EG_QUEEN[black_idx]),
-                        PieceType::King => (MG_KING[black_idx], EG_KING[black_idx]),
-                    },
-                };
-
-                // Calculate phase (Knights=1, Bishops=1, Rooks=2, Queens=4)
-                match piece.piece_type {
-                    PieceType::Knight | PieceType::Bishop => phase += 1,
-                    PieceType::Rook => phase += 2,
-                    PieceType::Queen => phase += 4,
-                    _ => {}
-                }
-
-                if piece.piece_color == PieceColor::White {
-                    mg_score += base_val + mg_pst;
-                    eg_score += base_val + eg_pst;
-                } else {
-                    mg_score -= base_val + mg_pst;
-                    eg_score -= base_val + eg_pst;
-                }
-            }
-        }
-    }
-
-    let phase = phase.min(24);
-    let score = (mg_score * phase + eg_score * (24 - phase)) / 24;
-
-    // Return from perspective of the side to move
     match position.turn {
         PieceColor::White => score,
         PieceColor::Black => -score,
