@@ -63,7 +63,7 @@ pub fn compute_hash(pos: &Position) -> u64 {
 
     for row in 0..8 {
         for col in 0..8 {
-            if let Some(piece) = pos.pieces[row][col] {
+            if let Some(piece) = pos.get_piece(row, col) {
                 let color_idx = if piece.piece_color == PieceColor::White { 0 } else { 1 };
                 let type_idx = piece_type_to_index(piece.piece_type);
                 let sq_idx = row * 8 + col;

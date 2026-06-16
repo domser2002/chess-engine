@@ -408,7 +408,7 @@ fn score_move(position: &Position, m: &Move, ply: usize, killers: &[[Option<Move
     }
     if m.capture {
         let (col, row) = crate::square::get_col_and_row(m.to);
-        let victim_val = match position.pieces[row as usize][col as usize] {
+        let victim_val = match position.get_piece(row as usize, col as usize) {
             Some(p) => piece_value(p),
             None => 100, // En passant capture victim is always a pawn
         };

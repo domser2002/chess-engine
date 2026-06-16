@@ -143,14 +143,14 @@ pub fn parse_move_uci(s: &str, position: &Position) -> Option<Move> {
     let to = parse_square(to_str)?;
 
     let (from_col, from_row) = square::get_col_and_row(from);
-    let piece = position.pieces[from_row as usize][from_col as usize]?;
+    let piece = position.get_piece(from_row as usize, from_col as usize)?;
 
     if piece.piece_color != position.turn {
         return None;
     }
 
     let (to_col, to_row) = square::get_col_and_row(to);
-    let target = position.pieces[to_row as usize][to_col as usize];
+    let target = position.get_piece(to_row as usize, to_col as usize);
 
     let mut m = Move::build(piece, from, to);
 

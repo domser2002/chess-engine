@@ -174,7 +174,7 @@ pub fn evaluate(position: Position) -> i32 {
 
     for row in 0..8 {
         for col in 0..8 {
-            if let Some(piece) = position.pieces[row][col] {
+            if let Some(piece) = position.get_piece(row, col) {
                 let base_val = piece_value(piece);
                 
                 // Add piece-square table value

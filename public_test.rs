@@ -384,7 +384,7 @@ pub mod move_tests {
         let mut pos = crate::position::parse_fen("4k3/8/8/8/8/8/P1P5/K7 w - - 0 1").unwrap();
         let (b3_col, b3_row) = get_col_and_row(B3 as u8);
         // Put a black piece on b3 so it's a valid capture square
-        pos.pieces[b3_row as usize][b3_col as usize] = Some(BLACK_KNIGHT);
+        pos.set_piece(b3_row as usize, b3_col as usize, Some(BLACK_KNIGHT));
 
         let m = parse_move_algebraic("cb3", &pos).unwrap();
         assert_eq!(m.from, C2 as u8);
@@ -410,9 +410,9 @@ pub mod position_tests {
 
         let mut expected = start_position();
         let (from_col, from_row) = get_col_and_row(e4.from);
-        expected.pieces[from_row as usize][from_col as usize] = None;
+        expected.set_piece(from_row as usize, from_col as usize, None);
         let (to_col, to_row) = get_col_and_row(e4.to);
-        expected.pieces[to_row as usize][to_col as usize] = Some(WHITE_PAWN);
+        expected.set_piece(to_row as usize, to_col as usize, Some(WHITE_PAWN));
         expected.turn = PieceColor::Black;
         expected.last_move = Some(e4);
         expected.hash = position.hash;
@@ -424,12 +424,12 @@ pub mod position_tests {
         let mut position = start_position();
         let (e4_col, e4_row) = get_col_and_row(E4 as u8);
         let (f5_col, f5_row) = get_col_and_row(F5 as u8);
-        position.pieces[e4_row as usize][e4_col as usize] = Some(WHITE_PAWN);
-        position.pieces[f5_row as usize][f5_col as usize] = Some(BLACK_PAWN);
+        position.set_piece(e4_row as usize, e4_col as usize, Some(WHITE_PAWN));
+        position.set_piece(f5_row as usize, f5_col as usize, Some(BLACK_PAWN));
         let ef5 = Move::build(WHITE_PAWN, E4 as u8, F5 as u8).capture();
         make_move(&mut position, ef5);
         let mut expected = start_position();
-        expected.pieces[f5_row as usize][f5_col as usize] = Some(WHITE_PAWN);
+        expected.set_piece(f5_row as usize, f5_col as usize, Some(WHITE_PAWN));
         expected.turn = PieceColor::Black;
         expected.last_move = Some(ef5);
         expected.hash = position.hash;
@@ -442,8 +442,8 @@ pub mod position_tests {
         let mut position = start_position();
         let (e4_col, e4_row) = get_col_and_row(E4 as u8);
         let (f5_col, f5_row) = get_col_and_row(F5 as u8);
-        position.pieces[e4_row as usize][e4_col as usize] = Some(WHITE_PAWN);
-        position.pieces[f5_row as usize][f5_col as usize] = Some(WHITE_PAWN);
+        position.set_piece(e4_row as usize, e4_col as usize, Some(WHITE_PAWN));
+        position.set_piece(f5_row as usize, f5_col as usize, Some(WHITE_PAWN));
         let ef5 = Move::build(WHITE_PAWN, E4 as u8, F5 as u8).capture();
         make_move(&mut position, ef5);
     }
@@ -453,7 +453,7 @@ pub mod position_tests {
     fn make_move_no_piece() {
         let mut position = start_position();
         let (f5_col, f5_row) = get_col_and_row(F5 as u8);
-        position.pieces[f5_row as usize][f5_col as usize] = Some(BLACK_PAWN);
+        position.set_piece(f5_row as usize, f5_col as usize, Some(BLACK_PAWN));
         let ef5 = Move::build(WHITE_PAWN, E4 as u8, F5 as u8).capture();
         make_move(&mut position, ef5);
     }
@@ -466,8 +466,8 @@ pub mod position_tests {
         let promotion = Move::build(WHITE_PAWN, F7 as u8, F8 as u8).promote_to(WHITE_QUEEN);
         make_move(&mut pos, promotion);
 
-        assert!(pos.pieces[f7_row as usize][f7_col as usize].is_none());
-        assert_eq!(pos.pieces[f8_row as usize][f8_col as usize], Some(WHITE_QUEEN));
+        assert!(pos.get_piece(f7_row as usize, f7_col as usize).is_none());
+        assert_eq!(pos.get_piece(f8_row as usize, f8_col as usize), Some(WHITE_QUEEN));
         assert_eq!(pos.turn, PieceColor::Black);
     }
 
@@ -482,9 +482,9 @@ pub mod position_tests {
         let exd6 = Move::build(WHITE_PAWN, E5 as u8, D6 as u8).capture();
         make_move(&mut pos, exd6);
 
-        assert!(pos.pieces[e5_row as usize][e5_col as usize].is_none());
-        assert_eq!(pos.pieces[d6_row as usize][d6_col as usize], Some(WHITE_PAWN));
-        assert!(pos.pieces[d5_row as usize][d5_col as usize].is_none());
+        assert!(pos.get_piece(e5_row as usize, e5_col as usize).is_none());
+        assert_eq!(pos.get_piece(d6_row as usize, d6_col as usize), Some(WHITE_PAWN));
+        assert!(pos.get_piece(d5_row as usize, d5_col as usize).is_none());
         assert_eq!(pos.turn, PieceColor::Black);
     }
 
@@ -507,7 +507,7 @@ pub mod position_tests {
         let mut pos = crate::position::parse_fen("4k3/8/8/8/8/8/8/4K3 w - - 0 1").unwrap();
         let (e4_col, e4_row) = get_col_and_row(E4 as u8);
         // Rook on same file (e4) attacks king on e1
-        pos.pieces[e4_row as usize][e4_col as usize] = Some(BLACK_ROOK);
+        pos.set_piece(e4_row as usize, e4_col as usize, Some(BLACK_ROOK));
         assert!(is_in_check(pos, PieceColor::White));
     }
 
@@ -522,7 +522,7 @@ pub mod position_tests {
         let mut pos = crate::position::parse_fen("4k3/8/8/8/8/8/8/4K3 w - - 0 1").unwrap();
         let (d2_col, d2_row) = get_col_and_row(D2 as u8);
         // Black pawn attacks diagonally upward (toward higher row index)
-        pos.pieces[d2_row as usize][d2_col as usize] = Some(BLACK_PAWN);
+        pos.set_piece(d2_row as usize, d2_col as usize, Some(BLACK_PAWN));
         assert!(is_in_check(pos, PieceColor::White));
     }
 
@@ -532,9 +532,9 @@ pub mod position_tests {
         let (e4_col, e4_row) = get_col_and_row(E4 as u8);
         let (e3_col, e3_row) = get_col_and_row(E3 as u8);
         // Rook on e4 would attack king on e1...
-        pos.pieces[e4_row as usize][e4_col as usize] = Some(BLACK_ROOK);
+        pos.set_piece(e4_row as usize, e4_col as usize, Some(BLACK_ROOK));
         // ...but white pawn on e3 blocks the line
-        pos.pieces[e3_row as usize][e3_col as usize] = Some(WHITE_PAWN);
+        pos.set_piece(e3_row as usize, e3_col as usize, Some(WHITE_PAWN));
         assert!(!is_in_check(pos, PieceColor::White));
     }
 
@@ -599,7 +599,7 @@ pub mod position_tests {
         pos.white_short_castle = true;
         pos.white_long_castle = true;
         let (e1_col, e1_row) = get_col_and_row(E1 as u8);
-        pos.pieces[e1_row as usize][e1_col as usize] = Some(WHITE_KING);
+        pos.set_piece(e1_row as usize, e1_col as usize, Some(WHITE_KING));
 
         make_move(&mut pos, Move::build(WHITE_KING, E1 as u8, E2 as u8));
         assert!(!pos.white_short_castle);
@@ -802,7 +802,7 @@ pub mod position_tests {
         pos.white_short_castle = true;
         pos.white_long_castle = true;
         let (e1_col, e1_row) = get_col_and_row(E1 as u8);
-        pos.pieces[e1_row as usize][e1_col as usize] = Some(WHITE_KING);
+        pos.set_piece(e1_row as usize, e1_col as usize, Some(WHITE_KING));
         let original = pos;
         // Move king: loses both castle rights
         let kg1 = Move::build(WHITE_KING, E1 as u8, E2 as u8);
@@ -879,7 +879,7 @@ pub mod eval_tests {
     fn white_up_one_pawn() {
         let mut pos = start_position();
         let (e7_col, e7_row) = get_col_and_row(crate::square::Squares::E7 as u8);
-        pos.pieces[e7_row as usize][e7_col as usize] = None;
+        pos.set_piece(e7_row as usize, e7_col as usize, None);
         assert!(evaluate(pos) > 50, "White should have positive score after Black loses a pawn");
     }
 
@@ -887,7 +887,7 @@ pub mod eval_tests {
     fn black_up_a_knight() {
         let mut pos = start_position();
         let (g1_col, g1_row) = get_col_and_row(crate::square::Squares::G1 as u8);
-        pos.pieces[g1_row as usize][g1_col as usize] = None;
+        pos.set_piece(g1_row as usize, g1_col as usize, None);
         pos.turn = PieceColor::Black;
         assert!(evaluate(pos) > 200, "Black should have positive score after White loses a knight");
     }
@@ -896,7 +896,7 @@ pub mod eval_tests {
     fn white_down_a_queen() {
         let mut pos = start_position();
         let (d1_col, d1_row) = get_col_and_row(crate::square::Squares::D1 as u8);
-        pos.pieces[d1_row as usize][d1_col as usize] = None;
+        pos.set_piece(d1_row as usize, d1_col as usize, None);
         assert!(evaluate(pos) < -500, "White should have negative score after losing a queen");
     }
 }
@@ -913,7 +913,8 @@ pub mod fen_tests {
         let fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
         let pos = parse_fen(fen).unwrap();
         let expected = start_position();
-        assert_eq!(pos.pieces, expected.pieces);
+        assert_eq!(pos.piece_colors, expected.piece_colors);
+        assert_eq!(pos.piece_types, expected.piece_types);
         assert_eq!(pos.turn, PieceColor::White);
         assert!(pos.white_short_castle);
         assert!(pos.white_long_castle);
@@ -936,8 +937,8 @@ pub mod fen_tests {
         let pos = parse_fen(fen).unwrap();
         let (e2_col, e2_row) = get_col_and_row(E2 as u8);
         let (e4_col, e4_row) = get_col_and_row(E4 as u8);
-        assert!(pos.pieces[e2_row as usize][e2_col as usize].is_none());
-        assert_eq!(pos.pieces[e4_row as usize][e4_col as usize], Some(WHITE_PAWN));
+        assert!(pos.get_piece(e2_row as usize, e2_col as usize).is_none());
+        assert_eq!(pos.get_piece(e4_row as usize, e4_col as usize), Some(WHITE_PAWN));
     }
 
     #[test]
@@ -1015,19 +1016,19 @@ pub mod fen_tests {
         assert_eq!(pos.turn, PieceColor::Black);
         // White bishop on c4
         let (c4_col, c4_row) = get_col_and_row(C4 as u8);
-        assert_eq!(pos.pieces[c4_row as usize][c4_col as usize], Some(WHITE_BISHOP));
+        assert_eq!(pos.get_piece(c4_row as usize, c4_col as usize), Some(WHITE_BISHOP));
         // White knight on f3
         let (f3_col, f3_row) = get_col_and_row(F3 as u8);
-        assert_eq!(pos.pieces[f3_row as usize][f3_col as usize], Some(WHITE_KNIGHT));
+        assert_eq!(pos.get_piece(f3_row as usize, f3_col as usize), Some(WHITE_KNIGHT));
         // Black knight on c6
         let (c6_col, c6_row) = get_col_and_row(C6 as u8);
-        assert_eq!(pos.pieces[c6_row as usize][c6_col as usize], Some(BLACK_KNIGHT));
+        assert_eq!(pos.get_piece(c6_row as usize, c6_col as usize), Some(BLACK_KNIGHT));
         // Black pawn on e5
         let (e5_col, e5_row) = get_col_and_row(E5 as u8);
-        assert_eq!(pos.pieces[e5_row as usize][e5_col as usize], Some(BLACK_PAWN));
+        assert_eq!(pos.get_piece(e5_row as usize, e5_col as usize), Some(BLACK_PAWN));
         // e2 is empty (pawn moved to e4)
         let (e2_col, e2_row) = get_col_and_row(E2 as u8);
-        assert!(pos.pieces[e2_row as usize][e2_col as usize].is_none());
+        assert!(pos.get_piece(e2_row as usize, e2_col as usize).is_none());
     }
 
     #[test]
@@ -1036,7 +1037,7 @@ pub mod fen_tests {
         let pos = parse_fen(fen).unwrap();
         for row in 0..8 {
             for col in 0..8 {
-                assert!(pos.pieces[row][col].is_none());
+                assert!(pos.get_piece(row, col).is_none());
             }
         }
     }
@@ -1047,8 +1048,8 @@ pub mod fen_tests {
         let pos = parse_fen(fen).unwrap();
         let (e1_col, e1_row) = get_col_and_row(E1 as u8);
         let (e8_col, e8_row) = get_col_and_row(E8 as u8);
-        assert_eq!(pos.pieces[e1_row as usize][e1_col as usize], Some(WHITE_KING));
-        assert_eq!(pos.pieces[e8_row as usize][e8_col as usize], Some(BLACK_KING));
+        assert_eq!(pos.get_piece(e1_row as usize, e1_col as usize), Some(WHITE_KING));
+        assert_eq!(pos.get_piece(e8_row as usize, e8_col as usize), Some(BLACK_KING));
     }
 
     #[test]
@@ -1102,7 +1103,8 @@ pub mod fen_tests {
         let fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
         let from_fen = parse_fen(fen).unwrap();
         let from_code = start_position();
-        assert_eq!(from_fen.pieces, from_code.pieces);
+        assert_eq!(from_fen.piece_colors, from_code.piece_colors);
+        assert_eq!(from_fen.piece_types, from_code.piece_types);
         assert_eq!(from_fen.turn, from_code.turn);
         assert_eq!(from_fen.white_short_castle, from_code.white_short_castle);
         assert_eq!(from_fen.white_long_castle, from_code.white_long_castle);
