@@ -68,13 +68,15 @@ Algorithmic overhaul achieving a massive speedup in search performance. Advanced
 
 ## v0.6.1
 
-Architectural overhaul completing the transition to a pure bitboard engine. The legacy 2D array structures have been eliminated, and performance is now strictly O(1) for board state evaluation.
+Architectural overhaul completing the transition to a pure bitboard engine with advanced positional evaluation. The legacy 2D array structures have been eliminated, and performance is now strictly O(1) for board state evaluation.
 
 - ✅ **Bitboard Architecture** — replaced the legacy `[[Option<Piece>; 8]; 8]` 2D array with 64-bit integer bitboards (`u64`), natively supporting fast bitwise operations.
-- ✅ **Incremental Evaluation** — replaced the O(64) leaf-node evaluation loop with an O(1) state tracker. The `mg_score`, `eg_score`, and `phase` are updated dynamically during `make_move` using Piece-Square Tables (PST).
+- ✅ **Positional Evaluation (PeSTO Tables)** — integrated PeSTO's evaluation tables, transitioning from a basic material-only evaluation to a robust, phase-dependent positional evaluation system (distinguishing between middlegame and endgame square values).
+- ✅ **Incremental Evaluation** — replaced the O(64) leaf-node evaluation loop with an O(1) state tracker. The `mg_score`, `eg_score`, and `phase` from the PeSTO tables are updated dynamically during `make_move`.
 - ✅ **Optimized Move Execution** — rewrote `make_move` to apply bitboard XOR/AND operations natively, completely bypassing heavy generic piece lookup overhead.
 - ✅ **MVV-LVA Bitwise Refactor** — improved move sorting by using native bitwise `AND` on bitboards to identify captured pieces, removing legacy array getter dependencies.
-- ✅ **Robust Time Management** — implemented a recursive search unwinding mechanism (`TimeOut` error) to strictly honor UCI time limits and prevent sudden engine hangups or losses on time.
+- 🐛 **Fixed Time Forfeits** — resolved an issue where the engine would lose on time by implementing a recursive search unwinding mechanism (`TimeOut` error) to immediately break out of the search tree and return the best move when the UCI clock expires.
+- 🐛 **Fixed Castling / Rook Move Collision** — resolved a critical bitboard shifting bug where castling moves would trigger a "shift left overflow" due to incorrect square indices being evaluated as rook captures.
 - ✅ 145 unit tests (up from 131), guaranteeing search stability across purely bitboard-based regression tests.
 
 ## How to Play
