@@ -28,7 +28,8 @@ pub fn interactive_loop() {
         }
 
         // Check if game is over
-        let moves = legal_moves(position);
+        let mut moves = crate::r#move::MoveList::new();
+        legal_moves(position, &mut moves);
         if moves.is_empty() {
             let in_check = is_in_check(position, position.turn);
             let side = match position.turn {
@@ -69,8 +70,8 @@ pub fn interactive_loop() {
                     continue;
                 }
                 if input == "moves" {
-                    for m in &moves {
-                        println!("  {}", print_move(*m));
+                    for &m in moves.as_slice() {
+                        println!("  {}", print_move(m));
                     }
                     continue;
                 }
@@ -88,7 +89,8 @@ pub fn interactive_loop() {
 
                         // Check if game is over after user's move
                         position::print_position(position);
-                        let opponent_moves = legal_moves(position);
+                        let mut opponent_moves = crate::r#move::MoveList::new();
+                        legal_moves(position, &mut opponent_moves);
                         if opponent_moves.is_empty() {
                             let in_check = is_in_check(position, position.turn);
                             let side = match position.turn {

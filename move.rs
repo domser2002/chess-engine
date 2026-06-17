@@ -17,6 +17,98 @@ pub struct Move {
     pub new_piece: Option<Piece>,
 }
 
+#[derive(Clone, Copy)]
+pub struct MoveList {
+    pub moves: [Move; 256],
+    pub count: usize,
+}
+
+
+impl std::cmp::PartialEq for MoveList {
+    fn eq(&self, other: &Self) -> bool {
+        self.as_slice() == other.as_slice()
+    }
+}
+
+impl std::cmp::PartialEq<Vec<Move>> for MoveList {
+    fn eq(&self, other: &Vec<Move>) -> bool {
+        self.as_slice() == other.as_slice()
+    }
+}
+
+impl std::fmt::Debug for MoveList {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Debug::fmt(self.as_slice(), f)
+    }
+}
+
+impl MoveList {
+    pub fn new() -> Self {
+        Self {
+            moves: [Move::build(crate::piece::WHITE_PAWN, 0, 0); 256],
+            count: 0,
+        }
+    }
+
+    pub fn push(&mut self, m: Move) {
+        self.moves[self.count] = m;
+        self.count += 1;
+    }
+
+    pub fn as_slice(&self) -> &[Move] {
+        &self.moves[..self.count]
+    }
+
+
+    
+    pub fn len(&self) -> usize {
+        self.count
+    }
+}
+
+pub struct MoveListIter {
+    list: MoveList,
+    index: usize,
+}
+
+impl Iterator for MoveListIter {
+    type Item = Move;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.index < self.list.count {
+            let m = self.list.moves[self.index];
+            self.index += 1;
+            Some(m)
+        } else {
+            None
+        }
+    }
+}
+
+impl IntoIterator for MoveList {
+    type Item = Move;
+    type IntoIter = MoveListIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        MoveListIter {
+            list: self,
+            index: 0,
+        }
+    }
+}
+
+impl std::ops::Deref for MoveList {
+    type Target = [Move];
+    fn deref(&self) -> &Self::Target {
+        &self.moves[..self.count]
+    }
+}
+
+impl std::ops::DerefMut for MoveList {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.moves[..self.count]
+    }
+}
+
 impl Move {
     pub fn build(piece: Piece, from: u8, to: u8) -> Self {
         Self {
@@ -315,7 +407,8 @@ fn parse_move_algebraic_body(
     let to_str = &body[len - 2..];
     let to = parse_square(to_str)?;
 
-    let moves = crate::position::legal_moves(*position);
+    let mut moves = crate::r#move::MoveList::new();
+    crate::position::legal_moves(*position, &mut moves);
 
     // Build disambiguation info from whatever characters come before the destination
     let prefix = &body[..len - 2]; // e.g. "", "e", "1", "e1", "x", "ex"

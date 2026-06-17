@@ -564,7 +564,8 @@ pub mod position_tests {
     #[test]
     fn castling_not_possible_with_pieces_in_way() {
         let pos = start_position();
-        let moves = legal_moves(pos);
+        let mut moves = crate::r#move::MoveList::new();
+        legal_moves(pos, &mut moves);
         // No castling possible in start position because knights and bishops block
         assert!(!moves.iter().any(|m| m.from == SHORT_CASTLING_SQUARE));
         assert!(!moves.iter().any(|m| m.from == LONG_CASTLING_SQUARE));
@@ -581,7 +582,8 @@ pub mod position_tests {
         make_move(&mut pos, Move::build(WHITE_BISHOP, F1 as u8, E2 as u8));
         make_move(&mut pos, Move::build(BLACK_PAWN, C7 as u8, C6 as u8));
         // Now white can castle short
-        let moves = legal_moves(pos);
+        let mut moves = crate::r#move::MoveList::new();
+        legal_moves(pos, &mut moves);
         assert!(moves.iter().any(|m| m.from == SHORT_CASTLING_SQUARE));
     }
 
@@ -603,7 +605,8 @@ pub mod position_tests {
         make_move(&mut pos, Move::build(WHITE_QUEEN, D1 as u8, C2 as u8));
         make_move(&mut pos, Move::build(BLACK_PAWN, F7 as u8, F6 as u8));
         // Now white can castle long
-        let moves = legal_moves(pos);
+        let mut moves = crate::r#move::MoveList::new();
+        legal_moves(pos, &mut moves);
         assert!(moves.iter().any(|m| m.from == LONG_CASTLING_SQUARE));
     }
 
@@ -675,7 +678,8 @@ pub mod position_tests {
     fn legal_moves_start_position() {
         let position = start_position();
         let mut expected = start_position_expected_legal_moves();
-        let mut moves = legal_moves(position);
+        let mut moves = crate::r#move::MoveList::new();
+        legal_moves(position, &mut moves);
         expected.sort();
         moves.sort();
         assert_eq!(moves, expected);
@@ -723,7 +727,8 @@ pub mod position_tests {
             Move::build(WHITE_QUEEN, D1 as u8, D3 as u8),
             Move::build(WHITE_KING, E1 as u8, D2 as u8),
         ];
-        let mut moves = legal_moves(position);
+        let mut moves = crate::r#move::MoveList::new();
+        legal_moves(position, &mut moves);
         expected.sort();
         moves.sort();
         assert_eq!(moves, expected);
@@ -876,7 +881,8 @@ pub mod position_tests {
             Move::build(WHITE_QUEEN, D1 as u8, H5 as u8),
             Move::build(WHITE_KING, E1 as u8, E2 as u8),
         ];
-        let mut moves = legal_moves(position);
+        let mut moves = crate::r#move::MoveList::new();
+        legal_moves(position, &mut moves);
         expected.sort();
         moves.sort();
         assert_eq!(moves, expected);
@@ -1034,7 +1040,8 @@ pub mod fen_tests {
         // White pawn on e5, black just played f7-f5. En passant exf6 should be legal.
         let fen = "rnbqkbnr/ppppp1pp/8/4Pp2/8/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 3";
         let pos = parse_fen(fen).unwrap();
-        let moves = legal_moves(pos);
+        let mut moves = crate::r#move::MoveList::new();
+        legal_moves(pos, &mut moves);
         // There should be an en passant capture: e5 pawn captures on f6
         let ep = moves
             .iter()
@@ -1281,7 +1288,8 @@ pub mod search_tests {
     fn node_counter_zero_when_no_moves() {
         // Black king on a8, white queen on b6, white king on c8 — black is stalemated
         let pos = parse_fen("k7/8/1Q6/8/8/8/8/2K5 b - - 0 1").unwrap();
-        let moves = legal_moves(pos);
+        let mut moves = crate::r#move::MoveList::new();
+        legal_moves(pos, &mut moves);
         // Verify it's actually stalemate (no legal moves for black)
         assert!(moves.is_empty());
         let config = SearchConfig {
@@ -1768,11 +1776,13 @@ fn repro_illegal_king_move() {
     let mut pos = crate::position::parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
     let moves = "e2e4 b8c6 d2d4 a7a6 d4d5 c6b8 g1f3 e7e6 d5e6 d7e6 d1d8 e8d8 b1c3 b8d7 c1f4 f8d6 e4e5 d6f8 e1c1 b7b5 f1d3 c8b7 f3g5 d8e8 d3e4 d7c5 e4b7 c5b7 h1e1 b5b4 c3e4 h7h6 g5f3 a6a5 f4e3 g8e7 a2a3 a8c8 a3b4 a5b4 h2h3 e7d5 e3d4 c8d8 c2c4 d5f4 g2g3 f4g2 e1g1 b7a5 g1g2 c7c5 d4e3 a5b3 c1c2 b3d4 f3d4 c5d4 e3d4 f7f5 e5f6 e6e5 d4e5 h8g8 f6f7 e8f7 d1d8 g7g6 c4c5 f8c5 d8g8 g6g5 g8g7 f7e6 e4c5 e6d5 c5d3 g5g4 h3g4 d5c6 c2b3 c6b5 g7g6 h6h5";
     for mv_str in moves.split_whitespace() {
-        let legals = crate::position::legal_moves(pos);
+        let mut legals = crate::r#move::MoveList::new();
+    crate::position::legal_moves(pos, &mut legals);
         let m = legals.into_iter().find(|m| crate::uci::move_to_uci(*m) == mv_str).unwrap();
         crate::position::make_move(&mut pos, m);
     }
-    let legals = crate::position::legal_moves(pos);
+    let mut legals = crate::r#move::MoveList::new();
+    crate::position::legal_moves(pos, &mut legals);
     let mut is_b4_legal = false;
     for m in legals {
         if crate::uci::move_to_uci(m) == "b3b4" {
@@ -1791,7 +1801,8 @@ fn repro_illegal_king_move_3() {
     let mut pos = crate::position::parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
     let moves = "e2e4 b8c6 d2d4 a7a6 d4d5 c6b8 g1f3 e7e6 d5e6 d7e6 d1d8 e8d8 b1c3 b8d7 c1f4 f8d6 e4e5 d6f8 e1c1 b7b5 f1d3 c8b7 f3g5 d8e8 d3e4 d7c5 e4b7 c5b7 h1e1 b5b4 c3e4 h7h6 g5f3 a6a5 f4e3 g8e7 a2a3 a8c8 a3b4 a5b4 h2h3 e7d5 e3d4 c8d8 c2c4 d5f4 g2g3 f4g2 e1g1 b7a5 g1g2 c7c5 d4e3 a5b3 c1c2 b3d4 f3d4 c5d4 e3d4 f7f5 e5f6 e6e5 d4e5 h8g8 f6f7 e8f7 d1d8 g7g6 c4c5 f8c5 d8g8 g6g5 g8g7 f7e6 e4c5 e6d5 c5d3 g5g4 h3g4 d5c6 c2b3 c6b5 g7g6 h6h5";
     for mv_str in moves.split_whitespace() {
-        let legals = crate::position::legal_moves(pos);
+        let mut legals = crate::r#move::MoveList::new();
+    crate::position::legal_moves(pos, &mut legals);
         let m = legals.into_iter().find(|m| crate::uci::move_to_uci(*m) == mv_str).unwrap();
         crate::position::make_move(&mut pos, m);
     }
@@ -1800,9 +1811,10 @@ fn repro_illegal_king_move_3() {
     println!("Final internal board:");
     crate::position::print_position(pos);
     
-    let legals = crate::position::legal_moves(pos);
+    let mut legals = crate::r#move::MoveList::new();
+    crate::position::legal_moves(pos, &mut legals);
     println!("Legal moves:");
-    for &m in &legals {
+    for &m in legals.as_slice() {
         println!("{}", crate::uci::move_to_uci(m));
     }
     let is_b4_legal = legals.iter().any(|m| crate::uci::move_to_uci(*m) == "b3b4");
@@ -1814,7 +1826,8 @@ fn test_hash_sync() {
     let mut pos = crate::position::parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
     let moves = "e2e4 b8c6 d2d4 a7a6 d4d5 c6b8 g1f3 e7e6 d5e6 d7e6 d1d8 e8d8 b1c3 b8d7 c1f4 f8d6 e4e5 d6f8 e1c1 b7b5 f1d3 c8b7 f3g5 d8e8 d3e4 d7c5 e4b7 c5b7 h1e1 b5b4 c3e4 h7h6 g5f3 a6a5 f4e3 g8e7 a2a3 a8c8 a3b4 a5b4 h2h3 e7d5 e3d4 c8d8 c2c4 d5f4 g2g3 f4g2 e1g1 b7a5 g1g2 c7c5 d4e3 a5b3 c1c2 b3d4 f3d4 c5d4 e3d4 f7f5 e5f6 e6e5 d4e5 h8g8 f6f7 e8f7 d1d8 g7g6 c4c5 f8c5 d8g8 g6g5 g8g7 f7e6 e4c5 e6d5 c5d3 g5g4 h3g4 d5c6 c2b3 c6b5 g7g6 h6h5";
     for mv_str in moves.split_whitespace() {
-        let legals = crate::position::legal_moves(pos);
+        let mut legals = crate::r#move::MoveList::new();
+    crate::position::legal_moves(pos, &mut legals);
         let m = legals.into_iter().find(|m| crate::uci::move_to_uci(*m) == mv_str).unwrap();
         crate::position::make_move(&mut pos, m);
         let computed = crate::zobrist::compute_hash(&pos);
@@ -1847,10 +1860,11 @@ fn test_engine_parsing_and_search() {
     println!("Final position before search:");
     crate::position::print_position(pos);
     
-    let legals = crate::position::legal_moves(pos);
+    let mut legals = crate::r#move::MoveList::new();
+    crate::position::legal_moves(pos, &mut legals);
     println!("Legals:");
-    for m in &legals {
-        println!("{}", crate::uci::move_to_uci(*m));
+    for &m in legals.as_slice() {
+        println!("{}", crate::uci::move_to_uci(m));
     }
     assert!(!legals.iter().any(|m| crate::uci::move_to_uci(*m) == "b3b4"));
 }

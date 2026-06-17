@@ -86,7 +86,8 @@ pub fn search_with_time_and_tt(
     stop: Arc<AtomicBool>,
     tt: &mut crate::tt::TranspositionTable,
 ) -> SearchResult {
-    let mut moves = legal_moves(position);
+    let mut moves = crate::r#move::MoveList::new();
+    legal_moves(position, &mut moves);
     let mut killers = [[None; 2]; 128];
     let mut history = [[0; 70]; 70];
     order_moves(&position, &mut moves, 0, &killers, &history, None);
@@ -141,7 +142,7 @@ pub fn search_with_time_and_tt(
             let mut best_score = MIN_SCORE;
             let mut alpha = MIN_SCORE;
 
-            for &m in &moves {
+            for &m in moves.as_slice() {
                 if excluded_moves.contains(&m) {
                     continue;
                 }
@@ -365,7 +366,8 @@ fn negamax(
         }
     }
 
-    let mut moves = legal_moves(position);
+    let mut moves = crate::r#move::MoveList::new();
+    legal_moves(position, &mut moves);
     order_moves(&position, &mut moves, ply, killers, history, tt_move);
     if moves.is_empty() {
         if in_check {
@@ -382,7 +384,7 @@ fn negamax(
     let old_alpha = alpha;
     let mut best_move = None;
 
-    for &m in &moves {
+    for &m in moves.as_slice() {
         let mut pos = position;
         let undo = make_move(&mut pos, m);
         let val = -negamax(
@@ -476,13 +478,14 @@ fn quiescence(
         alpha = stand_pat;
     }
 
-    let mut moves = capture_moves(position);
+    let mut moves = crate::r#move::MoveList::new();
+    capture_moves(position, &mut moves);
     static EMPTY_HISTORY: [[i32; 70]; 70] = [[0; 70]; 70];
     order_moves(&position, &mut moves, ply, killers, &EMPTY_HISTORY, None);
 
     let mut score = stand_pat;
 
-    for &m in &moves {
+    for &m in moves.as_slice() {
         let mut pos = position;
         let undo = make_move(&mut pos, m);
         let val = -quiescence(pos, -beta, -alpha, nodes, ply + 1, killers, deadline, stop);

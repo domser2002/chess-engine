@@ -1,4 +1,4 @@
-use crate::r#move::{LONG_CASTLING_SQUARE, Move, SHORT_CASTLING_SQUARE};
+use crate::r#move::{LONG_CASTLING_SQUARE, Move, MoveList, SHORT_CASTLING_SQUARE};
 use crate::piece::{
     BLACK_BISHOP, BLACK_KING, BLACK_KNIGHT, BLACK_PAWN, BLACK_QUEEN, BLACK_ROOK, Piece, PieceColor,
     PieceType, WHITE_BISHOP, WHITE_KING, WHITE_KNIGHT, WHITE_PAWN, WHITE_QUEEN, WHITE_ROOK,
@@ -408,8 +408,10 @@ pub fn is_in_check(position: Position, color: PieceColor) -> bool {
     is_square_attacked(position, lerf_to_square(king_sq), enemy)
 }
 
-pub fn pseudo_legal_moves(position: Position) -> Vec<Move> {
-    let mut v = Vec::with_capacity(60);
+pub fn pseudo_legal_moves<F>(position: Position, v: &mut MoveList, mut f: F)
+where
+    F: FnMut(Move) -> bool,
+{
     let us = position.turn;
     let them = if us == PieceColor::White { PieceColor::Black } else { PieceColor::White };
 
@@ -457,16 +459,22 @@ pub fn pseudo_legal_moves(position: Position) -> Vec<Move> {
             let to_sq = lerf_to_square(to_lerf);
             let row = to_lerf / 8;
             if row == prom_row {
-                v.push(Move::build(piece, from_sq, to_sq).promote_to(q));
-                v.push(Move::build(piece, from_sq, to_sq).promote_to(r));
-                v.push(Move::build(piece, from_sq, to_sq).promote_to(b));
-                v.push(Move::build(piece, from_sq, to_sq).promote_to(n));
+                let m = Move::build(piece, from_sq, to_sq).promote_to(q);
+                if f(m) { v.push(m); }
+                let m = Move::build(piece, from_sq, to_sq).promote_to(r);
+                if f(m) { v.push(m); }
+                let m = Move::build(piece, from_sq, to_sq).promote_to(b);
+                if f(m) { v.push(m); }
+                let m = Move::build(piece, from_sq, to_sq).promote_to(n);
+                if f(m) { v.push(m); }
             } else {
-                v.push(Move::build(piece, from_sq, to_sq));
+                let m = Move::build(piece, from_sq, to_sq);
+                if f(m) { v.push(m); }
                 if from_lerf / 8 == start_row {
                     let to2_lerf = (from_lerf as i32 + 2 * dir) as usize;
                     if empty.test_bit(to2_lerf as u8) {
-                        v.push(Move::build(piece, from_sq, lerf_to_square(to2_lerf)));
+                        let m = Move::build(piece, from_sq, lerf_to_square(to2_lerf));
+                if f(m) { v.push(m); }
                     }
                 }
             }
@@ -483,12 +491,17 @@ pub fn pseudo_legal_moves(position: Position) -> Vec<Move> {
             let to_sq = lerf_to_square(to_lerf);
             let row = to_lerf / 8;
             if row == prom_row {
-                v.push(Move::build(piece, from_sq, to_sq).capture().promote_to(q));
-                v.push(Move::build(piece, from_sq, to_sq).capture().promote_to(r));
-                v.push(Move::build(piece, from_sq, to_sq).capture().promote_to(b));
-                v.push(Move::build(piece, from_sq, to_sq).capture().promote_to(n));
+                let m = Move::build(piece, from_sq, to_sq).capture().promote_to(q);
+                if f(m) { v.push(m); }
+                let m = Move::build(piece, from_sq, to_sq).capture().promote_to(r);
+                if f(m) { v.push(m); }
+                let m = Move::build(piece, from_sq, to_sq).capture().promote_to(b);
+                if f(m) { v.push(m); }
+                let m = Move::build(piece, from_sq, to_sq).capture().promote_to(n);
+                if f(m) { v.push(m); }
             } else {
-                v.push(Move::build(piece, from_sq, to_sq).capture());
+                let m = Move::build(piece, from_sq, to_sq).capture();
+                if f(m) { v.push(m); }
             }
         }
 
@@ -502,7 +515,8 @@ pub fn pseudo_legal_moves(position: Position) -> Vec<Move> {
                         && (from_lerf / 8) == (last_to_lerf / 8)
                     {
                         let to_lerf = (last_to_lerf as i32 + dir) as usize;
-                        v.push(Move::build(piece, from_sq, lerf_to_square(to_lerf)).capture());
+                        let m = Move::build(piece, from_sq, lerf_to_square(to_lerf)).capture();
+                if f(m) { v.push(m); }
                     }
                 }
             }
@@ -526,7 +540,8 @@ pub fn pseudo_legal_moves(position: Position) -> Vec<Move> {
             if (opp_pieces.0 & (1u64 << to_lerf)) != 0 {
                 m = m.capture();
             }
-            v.push(m);
+            let m = m;
+                if f(m) { v.push(m); }
         }
     }
 
@@ -547,7 +562,8 @@ pub fn pseudo_legal_moves(position: Position) -> Vec<Move> {
             if (opp_pieces.0 & (1u64 << to_lerf)) != 0 {
                 m = m.capture();
             }
-            v.push(m);
+            let m = m;
+                if f(m) { v.push(m); }
         }
     }
 
@@ -568,7 +584,8 @@ pub fn pseudo_legal_moves(position: Position) -> Vec<Move> {
             if (opp_pieces.0 & (1u64 << to_lerf)) != 0 {
                 m = m.capture();
             }
-            v.push(m);
+            let m = m;
+                if f(m) { v.push(m); }
         }
     }
 
@@ -589,7 +606,8 @@ pub fn pseudo_legal_moves(position: Position) -> Vec<Move> {
             if (opp_pieces.0 & (1u64 << to_lerf)) != 0 {
                 m = m.capture();
             }
-            v.push(m);
+            let m = m;
+                if f(m) { v.push(m); }
         }
     }
 
@@ -610,15 +628,18 @@ pub fn pseudo_legal_moves(position: Position) -> Vec<Move> {
             if (opp_pieces.0 & (1u64 << to_lerf)) != 0 {
                 m = m.capture();
             }
-            v.push(m);
+            let m = m;
+                if f(m) { v.push(m); }
         }
     }
 
-    add_castling_moves(&mut v, position, us);
-    v
+    add_castling_moves(v, position, us, &mut f);
 }
 
-fn add_castling_moves(v: &mut Vec<Move>, position: Position, color: PieceColor) {
+fn add_castling_moves<F>(v: &mut MoveList, position: Position, color: PieceColor, f: &mut F)
+where
+    F: FnMut(Move) -> bool,
+{
     let (rights_short, rights_long) = match color {
         PieceColor::White => (position.white_short_castle, position.white_long_castle),
         PieceColor::Black => (position.black_short_castle, position.black_long_castle),
@@ -652,7 +673,8 @@ fn add_castling_moves(v: &mut Vec<Move>, position: Position, color: PieceColor) 
                 && !is_square_attacked(position, f_sq, enemy)
                 && !is_square_attacked(position, g_sq, enemy)
             {
-                v.push(Move::build_short_castling(color));
+                let m = Move::build_short_castling(color);
+                if f(m) { v.push(m); }
             }
         }
     }
@@ -676,34 +698,30 @@ fn add_castling_moves(v: &mut Vec<Move>, position: Position, color: PieceColor) 
                 && !is_square_attacked(position, d_sq, enemy)
                 && !is_square_attacked(position, c_sq, enemy)
             {
-                v.push(Move::build_long_castling(color));
+                let m = Move::build_long_castling(color);
+                if f(m) { v.push(m); }
             }
         }
     }
 }
 
-pub fn legal_moves(position: Position) -> Vec<Move> {
-    let candidates = pseudo_legal_moves(position);
-    candidates
-        .into_iter()
-        .filter(|&m| {
-            let mut pos = position;
-            make_move(&mut pos, m);
-            !is_in_check(pos, position.turn)
-        })
-        .collect()
+pub fn legal_moves(position: Position, valid_moves: &mut MoveList) {
+    pseudo_legal_moves(position, valid_moves, |m| {
+        let mut pos = position;
+        make_move(&mut pos, m);
+        !is_in_check(pos, position.turn)
+    });
 }
 
-pub fn capture_moves(position: Position) -> Vec<Move> {
-    pseudo_legal_moves(position)
-        .into_iter()
-        .filter(|m| m.capture)
-        .filter(|&m| {
-            let mut pos = position;
-            make_move(&mut pos, m);
-            !is_in_check(pos, position.turn)
-        })
-        .collect()
+pub fn capture_moves(position: Position, valid_moves: &mut MoveList) {
+    pseudo_legal_moves(position, valid_moves, |m| {
+        if !m.capture {
+            return false;
+        }
+        let mut pos = position;
+        make_move(&mut pos, m);
+        !is_in_check(pos, position.turn)
+    });
 }
 
 pub fn make_move(position: &mut Position, m: Move) -> UndoInfo {

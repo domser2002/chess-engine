@@ -6,7 +6,8 @@ pub fn perft(pos: &mut Position, depth: u8) -> u64 {
         return 1;
     }
 
-    let moves = legal_moves(*pos);
+    let mut moves = crate::r#move::MoveList::new();
+    legal_moves(*pos, &mut moves);
     if depth == 1 {
         return moves.len() as u64;
     }
@@ -24,7 +25,8 @@ pub fn perft(pos: &mut Position, depth: u8) -> u64 {
 pub fn divide(pos: &mut Position, depth: u8) {
     println!("--- Perft Depth {depth} ---");
     let start_time = Instant::now();
-    let moves = legal_moves(*pos);
+    let mut moves = crate::r#move::MoveList::new();
+    legal_moves(*pos, &mut moves);
     let mut total_nodes = 0;
 
     for m in moves {
